@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+  }
+  body {
+    overscroll-behavior: none;
+  }
+  /* One visible focus style for the whole app (never remove without replacement). */
+  :focus-visible {
+    outline: 2px solid theme('colors.primary');
+    outline-offset: 2px;
+  }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: theme('colors.surface');
+  }
+  ::-webkit-scrollbar-thumb {
+    background: theme('colors.surface-container-high');
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: theme('colors.surface-bright');
+  }
+  button:not(:disabled),
+  [role='radio'],
+  select,
+  summary,
+  label:has(input:not(:disabled)) {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+}
+
+@layer components {
+  .field {
+    @apply w-full rounded border border-outline-variant/70 bg-surface-container px-2 py-1.5 text-xs text-white placeholder:text-muted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-45;
+  }
+  .btn-ghost {
+    @apply btn border border-outline-variant/60 bg-surface-container text-on-surface-variant hover:bg-surface-container-high hover:text-white;
+  }
+  /* Disabled primary/export turn neutral so they never look clickable. */
+  .btn-primary {
+    @apply btn bg-primary-container font-semibold tracking-wide text-white shadow-glow hover:bg-[#4338ca] disabled:bg-surface-container-high disabled:text-muted disabled:opacity-100 disabled:shadow-none disabled:hover:bg-surface-container-high;
+  }
+  .btn-export {
+    @apply btn bg-secondary font-semibold text-black hover:bg-secondary-container hover:text-white disabled:bg-surface-container disabled:text-muted disabled:opacity-100 disabled:hover:bg-surface-container disabled:hover:text-muted;
+  }
+  .section-label {
+    @apply font-mono text-[11px] uppercase tracking-wide text-muted;
+  }
+  .tag {
+    @apply rounded bg-black/75 px-1.5 py-0.5 font-mono text-[11px] text-white backdrop-blur;
+  }
+}
+
+.stripe {
+  background-image: linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.18) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.18) 50%,
+    rgba(255, 255, 255, 0.18) 75%,
+    transparent 75%
+  );
+  background-size: 24px 24px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Creative Batch Toolkit — UI Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      fontFamily: { sans: ['"IBM Plex Sans"', 'system-ui', 'sans-serif'], mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'] },
+      colors: {
+        bg: '#0F172A', card: '#1B2336', muted: '#272F42',
+        line: '#334155', strong: '#475569', fg: '#F8FAFC', sub: '#94A3B8',
+        accent: '#4F46E5', 'accent-h': '#4338CA', 'accent-t': '#818CF8',
+        ok: '#4ADE80', warn: '#FBBF24', bad: '#F87171'
+      }
+    } }
+  }
+</script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<style>
+  html, body { height: 100%; }
+  body { background: #0F172A; color: #F8FAFC; font-size: 14px; line-height: 1.5; }
+  :focus-visible { outline: 2px solid #818CF8; outline-offset: 2px; }
+  button, [role="radio"], label[for], input[type="checkbox"], input[type="range"], select { cursor: pointer; }
+  button:disabled, fieldset:disabled button { cursor: not-allowed; }
+  .num { font-variant-numeric: tabular-nums; }
+  input[type="range"] { accent-color: #6366F1; }
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation: none; } * { transition: none !important; } }
+  .scroll-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scroll-thin::-webkit-scrollbar-thumb { background: #334155; border-radius: 8px; }
+</style>
+</head>
+<body class="font-sans">
+
+<div class="flex h-screen min-w-[1024px]">
+
+  <!-- Sidebar -->
+  <nav class="w-56 shrink-0 border-r border-line bg-bg flex flex-col" aria-label="Main">
+    <div class="h-16 px-4 flex items-center gap-2.5 border-b border-line">
+      <div class="w-8 h-8 rounded-lg bg-accent grid place-items-center"><i data-lucide="images" class="w-4 h-4 text-white" aria-hidden="true"></i></div>
+      <div class="leading-tight"><div class="text-[13px] font-semibold">Creative Batch</div><div class="text-[12px] text-sub">Toolkit</div></div>
+    </div>
+    <ul class="p-2 space-y-0.5 flex-1">
+      <li><a href="#" aria-current="page" class="flex items-center gap-2.5 px-3 h-10 rounded-lg bg-muted text-fg font-medium"><i data-lucide="layout-grid" class="w-4 h-4 text-accent-t" aria-hidden="true"></i>Workspace</a></li>
+      <li><button aria-disabled="true" class="w-full flex items-center gap-2.5 px-3 h-10 rounded-lg text-sub hover:bg-card transition-colors"><i data-lucide="history" class="w-4 h-4 shrink-0" aria-hidden="true"></i><span class="truncate">History</span><span class="ml-auto text-[11px] px-1.5 py-0.5 rounded bg-card border border-line">Soon</span></button></li>
+      <li><button aria-disabled="true" class="w-full flex items-center gap-2.5 px-3 h-10 rounded-lg text-sub hover:bg-card transition-colors"><i data-lucide="sliders-horizontal" class="w-4 h-4" aria-hidden="true"></i>Presets<span class="ml-auto text-[11px] px-1.5 py-0.5 rounded bg-card border border-line">Soon</span></button></li>
+      <li><button aria-disabled="true" class="w-full flex items-center gap-2.5 px-3 h-10 rounded-lg text-sub hover:bg-card transition-colors"><i data-lucide="settings" class="w-4 h-4" aria-hidden="true"></i>Settings<span class="ml-auto text-[11px] px-1.5 py-0.5 rounded bg-card border border-line">Soon</span></button></li>
+    </ul>
+    <div class="p-4 border-t border-line text-[12px] text-sub flex gap-2"><i data-lucide="shield-check" class="w-4 h-4 shrink-0 text-accent-t mt-0.5" aria-hidden="true"></i><span>Uploaded files are deleted automatically after 24 hours.</span></div>
+  </nav>
+
+  <!-- Main -->
+  <main class="flex-1 min-w-0 overflow-y-auto scroll-thin" id="main">
+    <div class="max-w-[1100px] mx-auto px-6 py-6 pb-28" id="mainInner"></div>
+  </main>
+
+  <!-- Settings -->
+  <aside class="w-80 shrink-0 border-l border-line bg-bg flex flex-col" aria-label="Processing settings">
+    <div class="h-16 px-4 flex items-center border-b border-line"><h2 class="text-[16px] font-semibold">Settings</h2></div>
+    <div class="flex-1 overflow-y-auto scroll-thin p-4">
+      <fieldset id="settingsFields" class="space-y-5 min-w-0 disabled:opacity-60">
+        <legend class="sr-only">Processing settings</legend>
+
+        <section>
+          <h3 class="text-[12px] font-medium text-sub uppercase tracking-wide mb-2">Preset</h3>
+          <div class="grid grid-cols-2 gap-1.5" id="presets"></div>
+        </section>
+
+        <section>
+          <h3 class="text-[12px] font-medium text-sub uppercase tracking-wide mb-2">Resize</h3>
+          <div role="radiogroup" aria-label="Resize mode" data-group="mode" class="flex p-0.5 rounded-lg bg-muted border border-line">
+            <button role="radio" data-value="fit" class="seg">Fit</button>
+            <button role="radio" data-value="cover" class="seg">Cover</button>
+            <button role="radio" data-value="width" class="seg">Width</button>
+            <button role="radio" data-value="original" class="seg">Original</button>
+          </div>
+          <p id="modeHelp" class="mt-2 text-[12px] text-sub"></p>
+          <div id="dims" class="mt-2 flex items-end gap-2">
+            <label class="flex-1 text-[12px] text-sub">Width (px)
+              <input id="inW" type="number" min="1" max="8000" class="field mt-1 w-full num font-mono"></label>
+            <span class="pb-2 text-sub" aria-hidden="true">×</span>
+            <label id="hWrap" class="flex-1 text-[12px] text-sub">Height (px)
+              <input id="inH" type="number" min="1" max="8000" class="field mt-1 w-full num font-mono"></label>
+          </div>
+        </section>
+
+        <section>
+          <h3 class="text-[12px] font-medium text-sub uppercase tracking-wide mb-2">Output</h3>
+          <div role="radiogroup" aria-label="Output format" data-group="format" class="flex p-0.5 rounded-lg bg-muted border border-line">
+            <button role="radio" data-value="jpeg" class="seg">JPEG</button>
+            <button role="radio" data-value="png" class="seg">PNG</button>
+            <button role="radio" data-value="webp" class="seg">WebP</button>
+          </div>
+          <div class="mt-3">
+            <div class="flex justify-between text-[12px] text-sub"><label for="inQ">Quality</label><output id="qOut" class="num font-mono text-fg"></output></div>
+            <input id="inQ" type="range" min="1" max="100" class="w-full mt-1.5">
+            <p id="qHelp" class="text-[12px] text-sub mt-1"></p>
+          </div>
+          <div id="bgWrap" class="mt-3 flex items-center justify-between gap-3">
+            <label for="inBg" class="text-[12px] text-sub">Background for transparent areas<br><span class="text-[11px]">JPEG has no transparency</span></label>
+            <input id="inBg" type="color" class="w-10 h-8 rounded border border-strong bg-muted p-0.5">
+          </div>
+        </section>
+
+        <section>
+          <h3 class="text-[12px] font-medium text-sub uppercase tracking-wide mb-2">File naming</h3>
+          <div class="space-y-2">
+            <label class="block text-[12px] text-sub">Prefix<input id="inPrefix" class="field mt-1 w-full font-mono" maxlength="40"></label>
+            <div class="flex gap-2">
+              <label class="flex-1 text-[12px] text-sub">Pattern<input id="inPattern" class="field mt-1 w-full font-mono" maxlength="60"></label>
+              <label class="w-16 text-[12px] text-sub">Pad<input id="inPad" type="number" min="1" max="6" class="field mt-1 w-full num font-mono"></label>
+            </div>
+            <p class="text-[11px] text-sub">Placeholders: <span class="font-mono">{prefix} {index} {name} {date}</span></p>
+          </div>
+        </section>
+
+        <section>
+          <label class="flex items-start gap-2.5">
+            <input id="inStrip" type="checkbox" class="mt-1 w-4 h-4 accent-indigo-500">
+            <span><span class="block">Remove metadata (EXIF)</span><span class="block text-[12px] text-sub">Also removes GPS location and camera info.</span></span>
+          </label>
+        </section>
+
+        <section class="rounded-lg border border-line bg-card p-3" aria-live="polite">
+          <h3 class="text-[12px] font-medium text-sub uppercase tracking-wide mb-1.5">Preview · first selected</h3>
+          <div id="previewBox" class="text-[12px] space-y-1"></div>
+        </section>
+      </fieldset>
+    </div>
+    <div id="actions" class="p-4 border-t border-line space-y-2"></div>
+  </aside>
+</div>
+
+<!-- Prototype state switcher (not part of the product UI) -->
+<div class="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 bg-card/95 border border-strong rounded-xl shadow-lg px-3 py-2 flex items-center gap-1 text-[12px]" role="toolbar" aria-label="Prototype state switcher">
+  <span class="text-sub pr-2 border-r border-line mr-1">Prototype state</span>
+  <div id="stateBar" class="flex gap-1"></div>
+</div>
+
+<div id="dialog" class="hidden"></div>
+<div id="toast" class="fixed top-4 right-4 z-[60] space-y-2" aria-live="polite"></div>
+<div id="live" class="sr-only" aria-live="polite"></div>
+
+<style type="text/tailwindcss">
+  @layer components {
+    .field { @apply bg-muted border border-strong rounded-lg px-3 h-9 text-[13px] text-fg placeholder:text-sub; }
+    .seg { @apply flex-1 h-8 px-2 text-[12px] font-medium rounded-md text-sub hover:text-fg transition-colors; }
+    .seg[aria-checked="true"] { @apply bg-accent text-white; }
+    .btn { @apply inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg font-medium text-[14px] transition-colors w-full; }
+    .btn-primary { @apply bg-accent text-white hover:bg-accent-h disabled:bg-muted disabled:text-sub; }
+    .btn-secondary { @apply border border-strong text-fg hover:bg-muted disabled:text-sub; }
+    .btn-sm { @apply inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-[12px] font-medium border border-strong hover:bg-muted transition-colors; }
+  }
+</style>
+
+<script>
+/* ---------- Data & config ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const EXT = { jpeg: 'jpg', png: 'png', webp: 'webp' };
+const PRESETS = {
+  social:   { label: 'Social Square',      w: 1080, h: 1080, format: 'webp', q: 80 },
+  portrait: { label: 'Instagram Portrait', w: 1080, h: 1350, format: 'jpeg', q: 85 },
+  banner:   { label: 'Web Banner',         w: 1920, h: 1080, format: 'webp', q: 80 },
+  catalog:  { label: 'Product Catalog',    w: 1200, h: 1200, format: 'jpeg', q: 90 },
+};
+const MODE_HELP = {
+  fit: 'Whole image stays inside the frame. Nothing is cropped or stretched.',
+  cover: 'Fills the whole frame. Edges that don\'t fit are cropped.',
+  width: 'Sets the width and calculates the height automatically.',
+  original: 'Keeps the original size. Only format and quality change.',
+};
+const cfg = { preset: 'catalog', mode: 'fit', w: 1200, h: 1200, format: 'jpeg', q: 90, bg: '#ffffff', prefix: 'product', pattern: '{prefix}_{index}', pad: 3, strip: true };
+
+const SEED = [
+  ['sneaker-red-front.jpg', 3024, 4032, 3.8], ['sneaker-red-side.jpg', 4032, 3024, 4.1],
+  ['backpack-olive.png', 2400, 2400, 6.2],   ['backpack-detail-zip.jpg', 3024, 4032, 3.5],
+  ['IMG_20260312_0041.jpg', 4000, 3000, 5.0], ['mug-white-logo.webp', 1800, 1800, 0.9],
+  ['hoodie-grey-back.jpg', 3024, 4032, 3.9],  ['cap-navy.png', 2000, 1500, 3.1],
+  ['lamp-brass-01.jpg', 3500, 2333, 4.4],     ['lamp-brass-02.jpg', 3500, 2333, 4.2],
+  ['bottle-steel.webp', 1600, 2400, 0.7],     ['tote-natural.jpg', 3024, 3024, 3.3],
+];
+const FAIL_MSG = { 3: 'Cannot decode image — the file appears to be corrupted.', 8: 'Image is larger than the 100 MP limit.' };
+
+let state = 'empty', assets = [], selected = new Set(), timer = null, upTimer = null, dialogId = null, lastFocus = null, globalError = '';
+
+/* ---------- Helpers ---------- */
+const pad = (n, l) => String(n).padStart(l, '0');
+const fmtBytes = n => n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const icon = (n, cls = 'w-4 h-4') => `<i data-lucide="${n}" class="${cls}" aria-hidden="true"></i>`;
+const thumbStyle = a => `background:linear-gradient(135deg,hsl(${a.hue} 55% 38%),hsl(${(a.hue + 45) % 360} 60% 20%))`;
+
+function makeAssets() {
+  return SEED.map(([name, w, h, mb], i) => ({
+    id: i, name, w, h, size: Math.round(mb * 1048576), hue: (i * 37 + 200) % 360,
+    status: 'pending', progress: 0, error: '', outName: '', outSize: 0, inBatch: false, failOnce: i === 3 || i === 8, willFail: false, up: 100,
+  }));
+}
+function outDims(a) {
+  const W = cfg.w, H = cfg.h;
+  if (cfg.mode === 'original') return [a.w, a.h];
+  if (cfg.mode === 'width') return [W, Math.round(a.h * W / a.w)];
+  if (cfg.mode === 'cover') return [W, H];
+  const s = Math.min(W / a.w, H / a.h); return [Math.round(a.w * s), Math.round(a.h * s)];
+}
+function nameFor(a) {
+  const base = a.name.replace(/\.[^.]+$/, '');
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const raw = cfg.pattern.replace('{prefix}', cfg.prefix).replace('{index}', pad(assets.indexOf(a) + 1, cfg.pad)).replace('{name}', base).replace('{date}', date);
+  return raw.replace(/[^\w.-]+/g, '_') + '.' + EXT[cfg.format];
+}
+function calcOut(a, exact) {
+  const [ow, oh] = outDims(a);
+  const px = Math.min(1, (ow * oh) / (a.w * a.h));
+  const base = { jpeg: 0.55, png: 0.95, webp: 0.38 }[cfg.format];
+  const qf = cfg.format === 'png' ? 1 : 0.35 + 0.65 * (cfg.q / 100);
+  const jitter = exact ? 0.93 + ((a.id * 7) % 10) / 70 : 1;
+  return Math.max(8192, Math.round(a.size * px * base * qf * jitter));
+}
+const batch = () => assets.filter(a => a.inBatch);
+const stat = s => batch().filter(a => a.status === s);
+
+/* ---------- State machine ---------- */
+function stop() { clearInterval(timer); clearInterval(upTimer); timer = upTimer = null; }
+function finalize(a) {
+  if (a.willFail) { a.status = 'failed'; a.progress = 0; a.error = FAIL_MSG[a.id] || 'Processing failed.'; }
+  else { a.status = 'completed'; a.progress = 100; a.error = ''; a.outName = nameFor(a); a.outSize = calcOut(a, true); }
+}
+function loadReady() { assets = makeAssets(); selected = new Set(assets.map(a => a.id)); globalError = ''; }
+
+function setState(s, silent) {
+  stop(); dialogId = null; globalError = '';
+  if (s === 'empty') { assets = []; selected = new Set(); state = 'empty'; }
+  else if (s === 'uploading') { startUpload(); return; }
+  else if (s === 'ready') { loadReady(); state = 'ready'; }
+  else if (s === 'processing') { loadReady(); startProcessing(); batch().slice(0, 4).forEach(a => { a.willFail = false; finalize(a); }); }
+  else if (s === 'completed') { loadReady(); assets.forEach(a => { a.inBatch = true; a.willFail = false; finalize(a); }); state = 'completed'; }
+  else if (s === 'partial') { loadReady(); assets.forEach(a => { a.inBatch = true; a.willFail = a.failOnce; finalize(a); }); state = 'partial'; }
+  else if (s === 'failed') { loadReady(); state = 'failed'; globalError = 'Could not reach the processing service. Your files are safe — nothing was lost.'; }
+  render();
+}
+function startUpload() {
+  assets = makeAssets(); assets.forEach(a => a.up = 0); selected = new Set(); state = 'uploading';
+  let tick = 0;
+  upTimer = setInterval(() => {
+    tick++;
+    assets.forEach((a, i) => { if (tick > i * 2) a.up = Math.min(100, a.up + 18 + Math.random() * 10); });
+    if (assets.every(a => a.up >= 100)) { stop(); assets.forEach(a => a.up = 100); selected = new Set(assets.map(a => a.id)); state = 'ready'; toast('12 images uploaded'); }
+    render();
+  }, 140);
+  render();
+}
+function startProcessing() {
+  const ids = selected.size ? selected : new Set(assets.map(a => a.id));
+  assets.forEach(a => {
+    a.inBatch = ids.has(a.id);
+    if (a.inBatch) { a.status = 'pending'; a.progress = 0; a.error = ''; a.willFail = a.failOnce; }
+  });
+  state = 'processing'; globalError = ''; runLoop();
+}
+function retry(list) {
+  list.forEach(a => { a.willFail = false; a.failOnce = false; a.status = 'pending'; a.progress = 0; a.error = ''; });
+  state = 'processing'; runLoop();
+}
+function runLoop() {
+  clearInterval(timer);
+  timer = setInterval(() => {
+    const b = batch();
+    b.filter(a => a.status === 'processing').forEach(a => { a.progress = Math.min(100, a.progress + 6 + Math.random() * 8); if (a.progress >= 100) finalize(a); });
+    let active = b.filter(a => a.status === 'processing').length;
+    for (const a of b.filter(a => a.status === 'pending')) { if (active >= 3) break; a.status = 'processing'; a.progress = 0; active++; }
+    if (!b.some(a => a.status === 'pending' || a.status === 'processing')) {
+      stop(); state = b.some(a => a.status === 'failed') ? 'partial' : 'completed';
+      announce(state === 'completed' ? 'All images processed.' : `${stat('failed').length} images failed.`);
+    }
+    render();
+  }, 150);
+  render();
+}
+
+/* ---------- Render ---------- */
+function statusChip(s) {
+  const m = {
+    pending:    ['clock', 'Pending', 'text-sub border-strong'],
+    processing: ['loader-2', 'Processing', 'text-warn border-warn/40 bg-warn/10'],
+    completed:  ['check-circle-2', 'Completed', 'text-ok border-ok/40 bg-ok/10'],
+    failed:     ['x-circle', 'Failed', 'text-bad border-bad/40 bg-bad/10'],
+  }[s];
+  return `<span class="inline-flex items-center gap-1 px-2 h-6 rounded-full border text-[12px] font-medium ${m[2]}">${icon(m[0], 'w-3.5 h-3.5' + (s === 'processing' ? ' spin' : ''))}${m[1]}</span>`;
+}
+
+function stepper() {
+  const idx = { empty: 0, uploading: 0, ready: 1, processing: 2, completed: 3, partial: 3, failed: 1 }[state];
+  const steps = ['Upload', 'Configure', 'Process', 'Export'];
+  return `<ol class="flex items-center gap-2 text-[13px]" aria-label="Progress">${steps.map((t, i) => {
+    const done = i < idx, cur = i === idx;
+    return `<li class="flex items-center gap-2" ${cur ? 'aria-current="step"' : ''}>
+      <span class="w-6 h-6 rounded-full grid place-items-center text-[12px] font-medium ${done ? 'bg-accent text-white' : cur ? 'border-2 border-accent-t text-accent-t' : 'border border-strong text-sub'}">${done ? icon('check', 'w-3.5 h-3.5') : i + 1}</span>
+      <span class="${cur ? 'text-fg font-medium' : 'text-sub'}">${t}</span>${i < 3 ? '<span class="w-8 h-px bg-line mx-1" aria-hidden="true"></span>' : ''}</li>`;
+  }).join('')}</ol>`;
+}
+
+function banner() {
+  const b = batch();
+  if (state === 'processing') {
+    const done = b.filter(a => a.status === 'completed' || a.status === 'failed').length, pct = Math.round(done / b.length * 100);
+    return `<div class="rounded-xl border border-line bg-card p-4">
+      <div class="flex justify-between text-[13px] mb-2"><span class="font-medium">Processing ${done} of ${b.length}</span><span class="text-sub">3 at a time · a failed file won't stop the batch</span></div>
+      <div class="h-2 rounded-full bg-muted overflow-hidden" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="Overall progress"><div class="h-full bg-accent transition-[width] duration-200" style="width:${pct}%"></div></div></div>`;
+  }
+  if (state === 'completed' || state === 'partial') {
+    const ok = stat('completed'), bad = stat('failed');
+    const o = ok.reduce((s, a) => s + a.size, 0), n = ok.reduce((s, a) => s + a.outSize, 0), pctSaved = Math.round((o - n) / o * 100);
+    if (state === 'completed') return `<div class="rounded-xl border border-ok/40 bg-ok/10 p-4 flex items-center gap-3">${icon('check-circle-2', 'w-5 h-5 text-ok shrink-0')}
+      <div><div class="font-medium">All ${ok.length} images processed</div><div class="text-[13px] text-sub num">${fmtBytes(o)} → ${fmtBytes(n)} · <span class="text-ok font-medium">${pctSaved}% smaller</span></div></div></div>`;
+    return `<div role="alert" class="rounded-xl border border-warn/40 bg-warn/10 p-4 flex items-center gap-3">${icon('alert-triangle', 'w-5 h-5 text-warn shrink-0')}
+      <div><div class="font-medium">${ok.length} processed, ${bad.length} failed</div><div class="text-[13px] text-sub">The ${ok.length} successful files are ready to download. Retry the failed ones without redoing the rest.</div></div></div>`;
+  }
+  if (state === 'failed') return `<div role="alert" class="rounded-xl border border-bad/40 bg-bad/10 p-4 flex items-center gap-3">${icon('x-circle', 'w-5 h-5 text-bad shrink-0')}
+    <div class="flex-1"><div class="font-medium">Batch couldn't start</div><div class="text-[13px] text-sub">${esc(globalError)}</div></div>
+    <button class="btn-sm" data-action="process">${icon('rotate-cw', 'w-3.5 h-3.5')}Try again</button></div>`;
+  return '';
+}
+
+function uploadZone() {
+  if (state === 'empty') return `<div id="drop" class="rounded-xl border-2 border-dashed border-strong bg-card/50 hover:border-accent-t hover:bg-card transition-colors h-80 grid place-items-center text-center px-6">
+    <div><div class="w-12 h-12 mx-auto mb-4 rounded-xl bg-muted grid place-items-center">${icon('upload-cloud', 'w-6 h-6 text-accent-t')}</div>
+    <p class="text-[16px] font-medium">Drag images here to start a batch</p>
+    <p class="text-sub mt-1">JPG, PNG or WebP · up to 20 MB each · up to 100 files</p>
+    <button class="btn btn-primary !w-auto mx-auto mt-5 px-6" data-action="browse">${icon('folder-open')}Browse files</button></div></div>`;
+  if (state === 'uploading') {
+    const pct = Math.round(assets.reduce((s, a) => s + a.up, 0) / assets.length), n = assets.filter(a => a.up >= 100).length;
+    return `<div class="rounded-xl border border-line bg-card p-4"><div class="flex justify-between text-[13px] mb-2"><span class="font-medium">Uploading ${n} of ${assets.length}</span>
+      <button class="text-accent-t hover:underline" data-action="set-state" data-state="empty">Cancel</button></div>
+      <div class="h-2 rounded-full bg-muted overflow-hidden" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="Upload progress"><div class="h-full bg-accent-t transition-[width] duration-150" style="width:${pct}%"></div></div></div>`;
+  }
+  const locked = state === 'processing';
+  return `<div class="rounded-xl border border-dashed border-strong bg-card/50 px-4 h-14 flex items-center justify-between">
+    <span class="flex items-center gap-2 text-sub">${icon('upload-cloud', 'w-4 h-4')}Drop more images here</span>
+    <button class="btn-sm" data-action="browse" ${locked ? 'disabled' : ''}>${icon('plus', 'w-3.5 h-3.5')}Add images</button></div>`;
+}
+
+function gallery() {
+  if (!assets.length) return '';
+  const locked = state === 'processing' || state === 'uploading';
+  const cards = assets.map(a => {
+    const sel = selected.has(a.id), uploading = state === 'uploading' && a.up < 100;
+    const showStatus = a.inBatch && ['processing', 'completed', 'partial'].includes(state);
+    const openable = a.status === 'completed';
+    return `<li class="group relative rounded-xl border ${sel ? 'border-accent-t' : 'border-line'} bg-card overflow-hidden transition-colors">
+      <div class="relative aspect-square" style="${thumbStyle(a)}">
+        ${uploading ? `<div class="absolute inset-0 bg-bg/60 grid place-items-center"><div class="w-3/4 h-1.5 rounded-full bg-muted overflow-hidden"><div class="h-full bg-accent-t" style="width:${a.up}%"></div></div></div>` :
+          `<span class="absolute inset-0 grid place-items-center opacity-25">${icon('image', 'w-8 h-8')}</span>`}
+        ${!uploading ? `<label class="absolute top-2 left-2 w-7 h-7 rounded-md bg-bg/70 grid place-items-center"><input type="checkbox" class="w-4 h-4 accent-indigo-500" data-action="toggle" data-id="${a.id}" ${sel ? 'checked' : ''} ${locked ? 'disabled' : ''} aria-label="Select ${esc(a.name)}"></label>
+        <button class="absolute top-2 right-2 w-7 h-7 rounded-md bg-bg/70 hover:bg-bad/30 grid place-items-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity" data-action="remove" data-id="${a.id}" aria-label="Remove ${esc(a.name)}" ${locked ? 'disabled' : ''}>${icon('x', 'w-4 h-4')}</button>` : ''}
+        ${showStatus ? `<span class="absolute bottom-2 left-2">${statusChip(a.status)}</span>` : ''}
+        ${openable ? `<button class="absolute inset-0 focus-visible:outline-offset-[-3px]" data-action="open" data-id="${a.id}" aria-label="Compare ${esc(a.name)} before and after"></button>` : ''}
+      </div>
+      <div class="p-2.5"><div class="font-mono text-[12px] truncate" title="${esc(a.name)}">${esc(a.name)}</div>
+        <div class="font-mono text-[11px] text-sub num">${a.w}×${a.h} · ${fmtBytes(a.size)}</div></div></li>`;
+  }).join('');
+  return `<section aria-label="Assets">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-[16px] font-semibold">Assets <span class="text-sub font-normal text-[13px] ml-1 num">${assets.length} files · ${selected.size} selected</span></h2>
+      <div class="flex gap-2"><button class="btn-sm" data-action="select-all" ${locked ? 'disabled' : ''}>${selected.size === assets.length ? 'Deselect all' : 'Select all'}</button>
+      <button class="btn-sm hover:!border-bad/60" data-action="clear" ${locked ? 'disabled' : ''}>${icon('trash-2', 'w-3.5 h-3.5')}Clear all</button></div></div>
+    <ul class="grid gap-3" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">${cards}</ul></section>`;
+}
+
+function queue() {
+  if (!['processing', 'completed', 'partial'].includes(state)) return '';
+  const rows = batch().map((a, i) => {
+    let mid = '';
+    if (a.status === 'processing') mid = `<div class="h-1.5 w-40 rounded-full bg-muted overflow-hidden" role="progressbar" aria-valuenow="${Math.round(a.progress)}" aria-valuemin="0" aria-valuemax="100" aria-label="${esc(a.name)} progress"><div class="h-full bg-warn" style="width:${a.progress}%"></div></div>`;
+    else if (a.status === 'completed') mid = `<span class="font-mono text-[12px] text-sub num">${fmtBytes(a.size)} → <span class="text-fg">${fmtBytes(a.outSize)}</span> <span class="text-ok">−${Math.round((a.size - a.outSize) / a.size * 100)}%</span></span>`;
+    else if (a.status === 'failed') mid = `<span class="text-[12px] text-bad">${esc(a.error)}</span>`;
+    return `<li class="flex items-center gap-3 px-3 py-2 ${i ? 'border-t border-line' : ''}">
+      <span class="w-9 h-9 rounded-md shrink-0" style="${thumbStyle(a)}"></span>
+      <div class="min-w-0 flex-1"><div class="font-mono text-[12px] truncate">${esc(a.name)}${a.outName ? ` <span class="text-sub">→</span> <span class="text-accent-t">${esc(a.outName)}</span>` : ''}</div>
+        <div class="mt-0.5">${mid}</div></div>
+      ${statusChip(a.status)}
+      ${a.status === 'failed' ? `<button class="btn-sm" data-action="retry" data-id="${a.id}">${icon('rotate-cw', 'w-3.5 h-3.5')}Retry</button>` : a.status === 'completed' ? `<button class="btn-sm" data-action="download-one" data-id="${a.id}" aria-label="Download ${esc(a.outName)}">${icon('download', 'w-3.5 h-3.5')}</button>` : '<span class="w-8"></span>'}</li>`;
+  }).join('');
+  return `<section aria-label="Processing queue"><h2 class="text-[16px] font-semibold mb-3">Queue</h2>
+    <ul class="rounded-xl border border-line bg-card max-h-[420px] overflow-y-auto scroll-thin">${rows}</ul></section>`;
+}
+
+function actions() {
+  const n = selected.size, ok = stat('completed').length, bad = stat('failed').length;
+  const done = batch().filter(a => a.status === 'completed' || a.status === 'failed').length;
+  let h = '';
+  if (state === 'empty' || state === 'uploading') h = `<button class="btn btn-primary" disabled>${icon('play')}Process All Assets</button><p class="text-[12px] text-sub text-center">Upload images to continue</p>`;
+  else if (state === 'ready' || state === 'failed') h = `<button class="btn btn-primary" data-action="process" ${n ? '' : 'disabled'}>${icon('play')}Process All Assets (${n})</button>`;
+  else if (state === 'processing') h = `<button class="btn btn-primary" disabled>${icon('loader-2', 'w-4 h-4 spin')}Processing ${done}/${batch().length}</button>`;
+  else if (state === 'completed') h = `<button class="btn btn-primary" data-action="zip">${icon('archive')}Download All as ZIP</button><button class="btn btn-secondary" data-action="again">${icon('rotate-cw')}Process again with new settings</button>`;
+  else if (state === 'partial') h = `<button class="btn btn-primary" data-action="retry-failed">${icon('rotate-cw')}Retry ${bad} failed</button><button class="btn btn-secondary" data-action="zip">${icon('archive')}Download ZIP (${ok} files)</button>`;
+  $('#actions').innerHTML = h;
+}
+
+function renderDialog() {
+  const el = $('#dialog');
+  if (dialogId == null) { el.className = 'hidden'; el.innerHTML = ''; return; }
+  const a = assets[dialogId], [ow, oh] = outDims(a), pct = Math.round((a.size - a.outSize) / a.size * 100);
+  const bar = (v, max, c) => `<div class="h-2 rounded-full bg-muted overflow-hidden mt-1.5"><div class="h-full ${c}" style="width:${Math.max(3, v / max * 100)}%"></div></div>`;
+  el.className = 'fixed inset-0 z-50 grid place-items-center bg-black/60 p-6';
+  el.innerHTML = `<div role="dialog" aria-modal="true" aria-labelledby="dlgTitle" class="w-full max-w-3xl rounded-2xl border border-strong bg-card shadow-2xl">
+    <div class="flex items-center justify-between px-5 h-14 border-b border-line"><h2 id="dlgTitle" class="font-mono text-[13px] truncate">${esc(a.name)}</h2>
+      <button class="w-8 h-8 rounded-md hover:bg-muted grid place-items-center" data-action="close" aria-label="Close comparison" id="dlgClose">${icon('x')}</button></div>
+    <div class="grid grid-cols-2 gap-4 p-5">
+      <figure><figcaption class="text-[12px] text-sub uppercase tracking-wide mb-2">Original</figcaption><div class="aspect-[4/3] rounded-lg grid place-items-center" style="${thumbStyle(a)}"><span class="opacity-25">${icon('image', 'w-10 h-10')}</span></div>
+        <div class="font-mono text-[12px] mt-2 num">${a.w}×${a.h} · ${fmtBytes(a.size)}</div>${bar(a.size, a.size, 'bg-strong')}</figure>
+      <figure><figcaption class="text-[12px] text-accent-t uppercase tracking-wide mb-2">Processed</figcaption><div class="aspect-[4/3] rounded-lg grid place-items-center" style="${thumbStyle(a)}"><span class="opacity-25">${icon('image', 'w-10 h-10')}</span></div>
+        <div class="font-mono text-[12px] mt-2 num">${ow}×${oh} · ${fmtBytes(a.outSize)} <span class="text-ok">−${pct}%</span></div>${bar(a.outSize, a.size, 'bg-accent-t')}</figure></div>
+    <div class="px-5 pb-5 flex items-center justify-between"><div class="font-mono text-[12px] text-sub">${esc(a.outName)} · exact size</div>
+      <button class="btn btn-primary !w-auto" data-action="download-one" data-id="${a.id}">${icon('download')}Download</button></div></div>`;
+  $('#dlgClose').focus();
+}
+
+function render() {
+  const title = state === 'empty' || state === 'uploading' ? 'Start a new batch' : 'Image Processing Workspace';
+  $('#mainInner').innerHTML = `
+    <header class="flex items-start justify-between gap-4 mb-5">
+      <div><h1 class="text-[20px] font-semibold leading-tight">Image Processing Workspace</h1>
+      <p class="text-sub mt-1">Resize, convert, compress and rename many images at once.</p></div>
+      <button class="btn-sm !h-10 !px-4 !text-[14px]" data-action="new">${icon('plus')}New Batch</button></header>
+    <div class="mb-5">${stepper()}</div>
+    <div class="space-y-6">${banner()}${uploadZone()}${gallery()}${queue()}</div>`;
+  $('#settingsFields').disabled = state === 'processing';
+  actions(); syncSettings(); renderDialog(); renderStateBar();
+  lucide.createIcons();
+}
+function renderStateBar() {
+  const items = [['empty', 'Empty'], ['uploading', 'Uploading'], ['ready', 'Ready'], ['processing', 'Processing'], ['completed', 'Completed'], ['partial', 'Partial failure'], ['failed', 'Failed']];
+  $('#stateBar').innerHTML = items.map(([s, l]) => `<button data-action="set-state" data-state="${s}" class="px-2.5 h-7 rounded-md ${state === s ? 'bg-accent text-white' : 'text-sub hover:bg-muted hover:text-fg'} transition-colors" ${state === s ? 'aria-pressed="true"' : 'aria-pressed="false"'}>${l}</button>`).join('');
+}
+
+/* ---------- Settings sync ---------- */
+function syncSettings() {
+  $('#presets').innerHTML = Object.entries(PRESETS).map(([k, p]) => `<button data-preset="${k}" aria-pressed="${cfg.preset === k}" class="text-left px-2.5 py-2 rounded-lg border ${cfg.preset === k ? 'border-accent-t bg-accent/15' : 'border-line bg-card hover:bg-muted'} transition-colors"><span class="block text-[13px] font-medium leading-tight">${p.label}</span><span class="block font-mono text-[11px] text-sub num">${p.w}×${p.h} · ${p.format === 'jpeg' ? 'JPEG' : 'WebP'}</span></button>`).join('');
+  document.querySelectorAll('[data-group]').forEach(g => g.querySelectorAll('[role=radio]').forEach(b => b.setAttribute('aria-checked', String(cfg[g.dataset.group] === b.dataset.value))));
+  $('#modeHelp').textContent = MODE_HELP[cfg.mode];
+  $('#dims').style.display = cfg.mode === 'original' ? 'none' : 'flex';
+  $('#hWrap').style.display = cfg.mode === 'width' ? 'none' : 'block';
+  const png = cfg.format === 'png';
+  $('#inQ').disabled = png; $('#inQ').value = cfg.q; $('#qOut').textContent = png ? '—' : cfg.q;
+  $('#qHelp').textContent = png ? 'PNG is lossless, so quality does not apply.' : cfg.q >= 90 ? 'Highest quality, larger files.' : cfg.q >= 75 ? 'Good balance of quality and size.' : 'Smaller files, visible compression.';
+  $('#bgWrap').style.display = cfg.format === 'jpeg' ? 'flex' : 'none';
+  for (const [id, key] of [['inW', 'w'], ['inH', 'h'], ['inBg', 'bg'], ['inPrefix', 'prefix'], ['inPattern', 'pattern'], ['inPad', 'pad']]) { const e = $('#' + id); if (document.activeElement !== e) e.value = cfg[key]; }
+  $('#inStrip').checked = cfg.strip;
+  const a = assets.find(x => selected.has(x.id));
+  $('#previewBox').innerHTML = a ? `<div class="font-mono num"><span class="text-sub">${a.w}×${a.h}</span> → <span>${outDims(a).join('×')}</span> · ${EXT[cfg.format]}</div>
+    <div class="font-mono text-accent-t truncate" title="${esc(nameFor(a))}">${esc(nameFor(a))}</div>
+    <div class="text-sub">Size: <span class="font-mono num">~${fmtBytes(calcOut(a))}</span> <span class="px-1.5 py-0.5 rounded bg-muted text-[11px]">estimated</span></div>`
+    : '<span class="text-sub">Select an image to see a preview.</span>';
+}
+
+/* ---------- Events ---------- */
+document.addEventListener('click', e => {
+  const p = e.target.closest('[data-preset]');
+  if (p) { const x = PRESETS[p.dataset.preset]; Object.assign(cfg, { preset: p.dataset.preset, w: x.w, h: x.h, format: x.format, q: x.q }); return syncSettings(), lucide.createIcons(); }
+  const r = e.target.closest('[role=radio]');
+  if (r) { cfg[r.closest('[data-group]').dataset.group] = r.dataset.value; cfg.preset = ''; return syncSettings(); }
+  const t = e.target.closest('[data-action]'); if (!t || t.disabled) return;
+  const id = t.dataset.id != null ? +t.dataset.id : null, act = t.dataset.action;
+  if (act === 'set-state') return setState(t.dataset.state);
+  if (act === 'browse') return setState('uploading');
+  if (act === 'new') return setState('empty');
+  if (act === 'toggle') { selected.has(id) ? selected.delete(id) : selected.add(id); return render(); }
+  if (act === 'remove') { assets = assets.filter(a => a.id !== id); selected.delete(id); if (!assets.length) state = 'empty'; return render(); }
+  if (act === 'select-all') { selected = selected.size === assets.length ? new Set() : new Set(assets.map(a => a.id)); return render(); }
+  if (act === 'clear') return setState('empty');
+  if (act === 'process') return startProcessing();
+  if (act === 'again') { assets.forEach(a => { a.inBatch = false; a.status = 'pending'; a.outName = ''; }); state = 'ready'; return render(); }
+  if (act === 'retry') return retry([assets[id]]);
+  if (act === 'retry-failed') return retry(stat('failed'));
+  if (act === 'zip') return toast(`Prototype: would download creative_batch_${new Date().toISOString().slice(0, 10).replace(/-/g, '_')}.zip (processed/, manifest.json, processing_report.csv)`);
+  if (act === 'download-one') return toast('Prototype: would download ' + assets[id].outName);
+  if (act === 'open') { lastFocus = t; dialogId = id; return renderDialog(), lucide.createIcons(); }
+  if (act === 'close') return closeDialog();
+});
+document.addEventListener('input', e => {
+  const m = { inW: ['w', Number], inH: ['h', Number], inQ: ['q', Number], inBg: ['bg', String], inPrefix: ['prefix', String], inPattern: ['pattern', String], inPad: ['pad', Number] }[e.target.id];
+  if (m) { cfg[m[0]] = m[1](e.target.value) || (m[1] === Number ? 1 : ''); if (['w', 'h', 'q'].includes(m[0])) cfg.preset = ''; syncSettings(); }
+  if (e.target.id === 'inStrip') cfg.strip = e.target.checked;
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && dialogId != null) closeDialog(); });
+function closeDialog() { dialogId = null; renderDialog(); if (lastFocus && document.contains(lastFocus)) lastFocus.focus(); }
+['dragover', 'drop'].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); if (ev === 'drop' && state === 'empty') setState('uploading'); }));
+
+function toast(msg) {
+  const d = document.createElement('div');
+  d.className = 'max-w-sm rounded-lg border border-strong bg-card px-4 py-2.5 text-[13px] shadow-lg';
+  d.textContent = msg; $('#toast').appendChild(d); setTimeout(() => d.remove(), 3500);
+}
+function announce(msg) { $('#live').textContent = msg; }
+
+const initial = (location.hash.match(/state=(\w+)/) || [])[1];   // e.g. index.html#state=partial
+initial ? setState(initial) : render();
+</script>
+</body>
+</html>

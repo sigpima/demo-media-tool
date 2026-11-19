@@ -1,0 +1,27 @@
+# Production compose file. The image is built by CI and pulled from GHCR — nothing is built on the server.
+#   server:  docker compose pull && docker compose up -d        (or ./update.sh)
+#   local:   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+services:
+  app:
+    # CBT_IMAGE = ghcr.io/<github-user-or-org>/<repo>   (lowercase)      CBT_TAG = latest | sha-abc1234 | v1.2.3
+    image: ${CBT_IMAGE:?Set CBT_IMAGE in .env, e.g. CBT_IMAGE=ghcr.io/your-user/creative-batch-toolkit}:${CBT_TAG:-latest}
+    restart: unless-stopped
+    env_file: .env                       # copy .env.example to .env and set the password
+    environment:
+      CBT_REQUIRE_AUTH: "true"           # refuse to start without a strong password
+      CBT_TRUST_PROXY: "true"            # safe because the port below is only reachable through your nginx
+    ports:
+      - "127.0.0.1:8000:8000"            # localhost only — nginx is the public entry point
+    volumes:
+      - batch-data:/data                 # uploads/outputs (auto-deleted after CBT_TTL_HOURS) + invite links
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m                   # Starlette spools incoming uploads here
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 2g                        # measured: 3 concurrent 56 MP images peak at ~1.25 GB
+    cpus: 2
+    pids_limit: 256
+
+volumes:
+  batch-data:

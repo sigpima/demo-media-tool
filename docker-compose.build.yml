@@ -1,0 +1,6 @@
+# Local override: build the image from this checkout instead of pulling it.
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+# (set CBT_IMAGE=creative-batch-toolkit in your local .env)
+services:
+  app:
+    build: .

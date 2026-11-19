@@ -1,0 +1,6 @@
+fastapi~=0.164
+uvicorn[standard]~=0.54
+python-multipart~=0.0.34
+pillow~=13.0
+pydantic~=2.14
+pydantic-settings~=2.16
