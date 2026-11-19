@@ -1,9 +1,11 @@
 import clsx from 'clsx'
 import { Check, Images, SlidersHorizontal } from 'lucide-react'
+import { useI18n, type Lang } from '../i18n'
 import type { ApiConfig } from '../services/api'
 import type { Phase } from '../types'
+import { Segmented } from './ui/Segmented'
 
-const STEPS = ['Upload & Select', 'Configure & Optimize', 'Process & Export']
+const STEPS = ['topbar.step.upload', 'topbar.step.configure', 'topbar.step.process'] as const
 const stepIndex: Record<Phase, number> = { empty: 0, uploading: 0, ready: 1, failed: 1, processing: 2, completed: 2, partial: 2 }
 const dot: Record<Phase, string> = {
   empty: 'bg-outline', uploading: 'bg-tertiary', ready: 'bg-primary', processing: 'bg-tertiary animate-pulse',
@@ -11,6 +13,7 @@ const dot: Record<Phase, string> = {
 }
 
 export function TopBar({ phase, batchName, guest, onToggleRecipe, recipeOpen }: { phase: Phase; batchName: string; guest?: ApiConfig; onToggleRecipe: () => void; recipeOpen: boolean }) {
+  const { t } = useI18n()
   const current = stepIndex[phase]
   const allDone = phase === 'completed'
   return (
@@ -27,19 +30,19 @@ export function TopBar({ phase, batchName, guest, onToggleRecipe, recipeOpen }: 
           <GuestChip guest={guest} />
         ) : (
           <div className="hidden min-w-0 items-center gap-2 text-xs text-on-surface-variant sm:flex">
-            <span className="font-mono text-muted">Batch</span>
+            <span className="font-mono text-muted">{t('topbar.batch')}</span>
             <span className="truncate font-mono font-medium text-white">{batchName}</span>
             <span className={clsx('h-2 w-2 shrink-0 rounded-full', dot[phase])} aria-hidden />
           </div>
         )}
       </div>
 
-      <ol aria-label="Workflow progress" className="hidden items-center gap-1 rounded-lg border border-outline-variant/50 bg-surface-container-low px-2 py-1 md:flex">
-        {STEPS.map((label, i) => {
+      <ol aria-label={t('topbar.progress')} className="hidden items-center gap-1 rounded-lg border border-outline-variant/50 bg-surface-container-low px-2 py-1 md:flex">
+        {STEPS.map((key, i) => {
           const done = i < current || (allDone && i === current)
           const active = i === current && !allDone
           return (
-            <li key={label} className="flex items-center gap-1" aria-current={active ? 'step' : undefined}>
+            <li key={key} className="flex items-center gap-1" aria-current={active ? 'step' : undefined}>
               {i > 0 && <span className="px-1 text-xs text-outline-variant" aria-hidden>/</span>}
               <span
                 className={clsx(
@@ -55,31 +58,44 @@ export function TopBar({ phase, batchName, guest, onToggleRecipe, recipeOpen }: 
                 >
                   {done ? <Check className="h-3 w-3" strokeWidth={3} aria-hidden /> : i + 1}
                 </span>
-                {label}
-                <span className="sr-only">{done ? ' (done)' : active ? ' (current)' : ''}</span>
+                {t(key)}
+                <span className="sr-only">{done ? t('topbar.step.done') : active ? t('topbar.step.current') : ''}</span>
               </span>
             </li>
           )
         })}
       </ol>
 
-      <button type="button" onClick={onToggleRecipe} aria-expanded={recipeOpen} aria-controls="recipe-panel" className="btn-ghost desk:hidden">
-        <SlidersHorizontal className="h-4 w-4" aria-hidden />
-        Recipe
-      </button>
-      <div className="hidden w-[148px] desk:block" aria-hidden />
+      <div className="flex shrink-0 items-center gap-2">
+        <button type="button" onClick={onToggleRecipe} aria-expanded={recipeOpen} aria-controls="recipe-panel" className="btn-ghost desk:hidden">
+          <SlidersHorizontal className="h-4 w-4" aria-hidden />
+          {t('topbar.recipe')}
+        </button>
+        <LangSwitch />
+      </div>
     </header>
   )
 }
 
 /** Shown to people who came in through an invite link: what is left of their trial. */
 function GuestChip({ guest }: { guest: ApiConfig }) {
+  const { t } = useI18n()
   const days = guest.inviteExpiresAt ? Math.max(0, Math.ceil((new Date(guest.inviteExpiresAt).getTime() - Date.now()) / 86_400_000)) : null
   return (
-    <div className="hidden shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] text-primary desk:flex" title="You are using the app through an invite link">
-      <span className="font-semibold">Guest</span>
-      {guest.imagesLeftToday != null && <span className="font-mono">· {guest.imagesLeftToday} images left today</span>}
-      {days != null && <span className="font-mono">· expires in {days} {days === 1 ? 'day' : 'days'}</span>}
+    <div className="hidden shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] text-primary desk:flex" title={t('guest.title')}>
+      <span className="font-semibold">{t('guest.label')}</span>
+      {guest.imagesLeftToday != null && <span className="font-mono">{t('guest.imagesLeft', { n: guest.imagesLeftToday })}</span>}
+      {days != null && <span className="font-mono">· {t('guest.days', { count: days })}</span>}
+    </div>
+  )
+}
+
+/** EN | VI switch. Each language is named in its own language, so it can be found whichever one is active. */
+function LangSwitch() {
+  const { lang, setLang, t } = useI18n()
+  return (
+    <div className="w-[88px] shrink-0">
+      <Segmented<Lang> label={t('lang.switch')} value={lang} onChange={setLang} options={[{ value: 'en', label: 'EN' }, { value: 'vi', label: 'VI' }]} />
     </div>
   )
 }

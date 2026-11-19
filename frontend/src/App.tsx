@@ -4,7 +4,6 @@ import { AssetGrid } from './components/AssetGrid'
 import { ComparePanel } from './components/ComparePanel'
 import { DemoBar } from './components/DemoBar'
 import { Inspector } from './components/Inspector'
-import { PresetLibrary } from './components/PresetLibrary'
 import { Sidebar } from './components/Sidebar'
 import { StatusPanel } from './components/StatusPanel'
 import { Toaster } from './components/Toaster'
@@ -12,6 +11,7 @@ import { Toolbar } from './components/Toolbar'
 import { TopBar } from './components/TopBar'
 import { UploadZone } from './components/UploadZone'
 import { ACCEPTED_MIME } from './lib/constants'
+import { useI18n } from './i18n'
 import { useBatch } from './state/useBatch'
 import { useConfig } from './state/useConfig'
 import { usePresets } from './state/usePresets'
@@ -21,15 +21,10 @@ const showDemo = import.meta.env.DEV || new URLSearchParams(location.search).has
 const batchName = `creative_batch_${new Date().toISOString().slice(0, 10).replaceAll('-', '_')}`
 
 export default function App() {
+  const { t } = useI18n()
   const { config, limits, refresh } = useConfig()
-  const batch = useBatch(limits, refresh)
+  const batch = useBatch(limits, t, refresh)
   const presets = usePresets()
-  const [libraryOpen, setLibraryOpen] = useState(false)
-  const libraryOpener = useRef<HTMLElement | null>(null)
-  const openLibrary = useCallback(() => {
-    libraryOpener.current = document.activeElement as HTMLElement | null // where focus goes back to when the dialog closes
-    setLibraryOpen(true)
-  }, [])
   const { phase } = batch
   const fileInput = useRef<HTMLInputElement>(null)
   const [recipeOpen, setRecipeOpen] = useState(false)
@@ -41,6 +36,16 @@ export default function App() {
     const s = new URLSearchParams(location.search).get('state') as Phase | null
     if (showDemo && s) batch.showDemo(s)
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Sidebar "Presets": show the recipe (a slide-over below 1200px), scroll to the section and focus its selected tab.
+  const openPresets = useCallback(() => {
+    setRecipeOpen(true)
+    requestAnimationFrame(() => {
+      const section = document.getElementById('presets-section')
+      section?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+      section?.querySelector<HTMLElement>('[role=tab][aria-selected=true]')?.focus({ preventScroll: true })
+    })
   }, [])
 
   const browse = useCallback(() => fileInput.current?.click(), [])
@@ -62,7 +67,7 @@ export default function App() {
       <TopBar phase={phase} batchName={batchName} guest={config?.role === 'guest' ? config : undefined} recipeOpen={recipeOpen} onToggleRecipe={() => setRecipeOpen((o) => !o)} />
 
       <div className="flex min-h-0 flex-1">
-        <Sidebar onOpenPresets={openLibrary} />
+        <Sidebar onOpenPresets={openPresets} />
 
         <main
           className="relative flex min-w-0 flex-1 flex-col overflow-y-auto"
@@ -87,20 +92,19 @@ export default function App() {
           {dragging && !busy && (
             <div className="pointer-events-none absolute inset-3 z-30 flex items-center justify-center rounded-xl border-2 border-dashed border-primary bg-surface/80 backdrop-blur-sm">
               <div className="flex items-center gap-3 text-sm font-medium text-white">
-                <CloudUpload className="h-6 w-6 text-primary" aria-hidden /> Drop images to add them to the batch
+                <CloudUpload className="h-6 w-6 text-primary" aria-hidden /> {t('app.drop')}
               </div>
             </div>
           )}
         </main>
 
-        <Inspector batch={batch} presets={presets} open={recipeOpen} onClose={() => setRecipeOpen(false)} onManagePresets={openLibrary} />
+        <Inspector batch={batch} presets={presets} open={recipeOpen} onClose={() => setRecipeOpen(false)} />
       </div>
 
       <input
         ref={fileInput} type="file" multiple hidden accept={ACCEPTED_MIME.join(',')}
         onChange={(e) => { batch.addFiles(Array.from(e.target.files ?? [])); e.target.value = '' }}
       />
-      <PresetLibrary open={libraryOpen} onOpenChange={setLibraryOpen} returnFocusTo={libraryOpener} presets={presets} activeId={batch.settings.presetId} onApply={batch.applyPreset} />
       <Toaster toasts={batch.toasts} announcement={batch.announcement} />
       {showDemo && <DemoBar phase={phase} onPick={batch.showDemo} />}
     </div>

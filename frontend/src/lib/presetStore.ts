@@ -5,6 +5,7 @@
  */
 import type { OutputFormat, Preset, ResizeMode, Settings } from '../types'
 import { PRESETS } from './constants'
+import { labelFor } from './format'
 
 export const MAX_CUSTOM_PRESETS = 10
 export const NAME_MAX = 30
@@ -69,20 +70,22 @@ export function parseStored(raw: string | null): CustomPreset[] {
   return out
 }
 
-/** Error message, or null when the name is acceptable. Built-in names are reserved too. */
-export function validateName(name: string, list: CustomPreset[], exceptId?: string): string | null {
+export type PresetError = 'name-empty' | 'name-long' | 'name-taken' | 'limit'
+
+/** Error code (the UI translates it), or null when the name is acceptable. Built-in names are reserved too. */
+export function validateName(name: string, list: CustomPreset[], exceptId?: string): PresetError | null {
   const n = name.trim()
-  if (!n) return 'Give the preset a name.'
-  if (n.length > NAME_MAX) return `Use at most ${NAME_MAX} characters.`
+  if (!n) return 'name-empty'
+  if (n.length > NAME_MAX) return 'name-long'
   const taken = [...PRESETS.map((p) => p.label), ...list.filter((p) => p.id !== exceptId).map((p) => p.name)]
-  if (taken.some((t) => t.toLowerCase() === n.toLowerCase())) return 'A preset with this name already exists.'
+  if (taken.some((t) => t.toLowerCase() === n.toLowerCase())) return 'name-taken'
   return null
 }
 
-export type Result = { list: CustomPreset[]; error: null; added?: CustomPreset } | { list: CustomPreset[]; error: string }
+export type Result = { list: CustomPreset[]; error: null; added?: CustomPreset } | { list: CustomPreset[]; error: PresetError }
 
 export function addPreset(list: CustomPreset[], name: string, recipe: PresetRecipe, id: string, now: string): Result {
-  if (list.length >= MAX_CUSTOM_PRESETS) return { list, error: `You can keep up to ${MAX_CUSTOM_PRESETS} presets. Delete one first.` }
+  if (list.length >= MAX_CUSTOM_PRESETS) return { list, error: 'limit' }
   const error = validateName(name, list)
   if (error) return { list, error }
   const added: CustomPreset = { id, name: name.trim(), createdAt: now, recipe }
@@ -99,10 +102,27 @@ export const removePreset = (list: CustomPreset[], id: string): CustomPreset[] =
 
 export const toPreset = (c: CustomPreset): Preset => ({ id: c.id, label: c.name, custom: true, ...c.recipe })
 
-const MODE_LABEL: Record<ResizeMode, string> = { fit: 'Fit', cover: 'Fill', width: 'Width', original: 'Original' }
-/** One-line summary for lists, e.g. "1200×1200 · Fit · JPEG Q90". */
-export function describe(r: PresetRecipe): string {
-  const size = r.resizeMode === 'original' ? 'Original size' : r.resizeMode === 'width' ? `Width ${r.width}` : `${r.width}×${r.height}`
-  const fmt = r.format === 'png' ? 'PNG' : `${r.format === 'jpeg' ? 'JPEG' : 'WebP'} Q${r.quality}`
-  return `${size} · ${MODE_LABEL[r.resizeMode]} · ${fmt}`
+/** Replace a preset's recipe with the current one. Id, name and creation time stay. */
+export const updatePreset = (list: CustomPreset[], id: string, recipe: PresetRecipe): CustomPreset[] => list.map((p) => (p.id === id ? { ...p, recipe } : p))
+
+/**
+ * True when the current settings no longer match the selected preset. Size, format and quality always count;
+ * the other recipe fields only when the preset carries them (built-ins leave those to the user).
+ */
+export function isModified(s: Settings, p: Preset): boolean {
+  if (s.width !== p.width || s.height !== p.height || s.format !== p.format || s.quality !== p.quality) return true
+  return (
+    (p.resizeMode !== undefined && s.resizeMode !== p.resizeMode) ||
+    (p.background !== undefined && s.background !== p.background) ||
+    (p.removeMetadata !== undefined && s.removeMetadata !== p.removeMetadata) ||
+    (p.pattern !== undefined && s.pattern !== p.pattern) ||
+    (p.padding !== undefined && s.padding !== p.padding)
+  )
+}
+
+/** One-line summary for list rows, e.g. "1600×900 · WebP · Q80". `originalLabel` is the translated "Original size". */
+export function presetSummary(p: Pick<Preset, 'width' | 'height' | 'format' | 'quality' | 'resizeMode'>, originalLabel: string): string {
+  const size = p.resizeMode === 'original' ? originalLabel : p.resizeMode === 'width' ? `${p.width}px` : `${p.width}×${p.height}`
+  const fmt = labelFor(p.format)
+  return [size, fmt, ...(p.format === 'png' ? [] : [`Q${p.quality}`])].join(' · ')
 }

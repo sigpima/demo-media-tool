@@ -27,3 +27,6 @@ Thumbs.db
 .idea/
 .vscode/
 .claude/settings.local.json
+
+# superpowers brainstorm/plan scratch
+.superpowers/

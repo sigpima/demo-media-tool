@@ -43,8 +43,11 @@ export interface ApiConfig {
   inviteExpiresAt: string | null
 }
 
+/** `code` is set only when the message was generated here (so the UI can translate it); server text has no code. */
+export type ApiErrorCode = 'network' | 'expired' | 'invalid' | 'failed' | 'upload'
+
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(public status: number, message: string, public code?: ApiErrorCode) {
     super(message)
   }
 }
@@ -54,16 +57,22 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   try {
     res = await fetch(url, init)
   } catch {
-    throw new ApiError(0, 'Cannot reach the server.')
+    throw new ApiError(0, 'Cannot reach the server.', 'network')
   }
   if (!res.ok) {
     let detail = res.status === 401 ? 'Your access has expired. Open your invite link again.' : `Request failed (${res.status})`
+    let code: ApiErrorCode | undefined = res.status === 401 ? 'expired' : 'failed'
     try {
-      detail = (await res.json()).detail ?? detail
+      const body = (await res.json()).detail
+      if (body != null) {
+        detail = body
+        code = undefined // the server's own text
+      }
     } catch {
       /* not JSON */
     }
-    throw new ApiError(res.status, typeof detail === 'string' ? detail : 'Invalid request.')
+    if (typeof detail !== 'string') throw new ApiError(res.status, 'Invalid request.', 'invalid')
+    throw new ApiError(res.status, detail, code)
   }
   return res.status === 204 ? (undefined as T) : ((await res.json()) as T)
 }
@@ -106,12 +115,12 @@ export function uploadFile(batchId: string, file: File, onProgress: (pct: number
       try {
         const body = JSON.parse(xhr.responseText)
         if (xhr.status === 200) return resolve(body.results[0] as UploadResult)
-        reject(new ApiError(xhr.status, body.detail ?? `Upload failed (${xhr.status})`))
+        reject(typeof body.detail === 'string' ? new ApiError(xhr.status, body.detail) : new ApiError(xhr.status, `Upload failed (${xhr.status})`, 'upload'))
       } catch {
-        reject(new ApiError(xhr.status, `Upload failed (${xhr.status})`))
+        reject(new ApiError(xhr.status, `Upload failed (${xhr.status})`, 'upload'))
       }
     }
-    xhr.onerror = () => reject(new ApiError(0, 'Cannot reach the server.'))
+    xhr.onerror = () => reject(new ApiError(0, 'Cannot reach the server.', 'network'))
     xhr.onabort = () => reject(new DOMException('aborted', 'AbortError'))
     signal.addEventListener('abort', () => xhr.abort(), { once: true })
     const form = new FormData()

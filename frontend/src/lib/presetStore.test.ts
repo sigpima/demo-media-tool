@@ -1,6 +1,6 @@
 import { describe as suite, expect, it } from 'vitest'
-import { DEFAULT_SETTINGS } from './constants'
-import { addPreset, describe, MAX_CUSTOM_PRESETS, NAME_MAX, parseStored, recipeFrom, removePreset, renamePreset, toPreset, validateName, type CustomPreset } from './presetStore'
+import { DEFAULT_SETTINGS, PRESETS } from './constants'
+import { addPreset, isModified, MAX_CUSTOM_PRESETS, NAME_MAX, parseStored, presetSummary, recipeFrom, removePreset, renamePreset, toPreset, updatePreset, validateName, type CustomPreset } from './presetStore'
 
 const recipe = recipeFrom({ ...DEFAULT_SETTINGS, format: 'jpeg', quality: 70, width: 800, height: 600 })
 const make = (n: number): CustomPreset[] =>
@@ -22,20 +22,20 @@ suite('adding presets', () => {
     expect(r.error).toBeNull()
     expect(r.list).toEqual([{ id: 'custom-a', name: 'Blog hero', createdAt: 't', recipe }])
   })
-  it.each([['', 'name'], ['   ', 'name'], ['x'.repeat(NAME_MAX + 1), 'at most']])('rejects %j', (name, hint) => {
-    expect(addPreset([], name, recipe, 'custom-a', 't').error).toContain(hint)
+  it.each([['', 'name-empty'], ['   ', 'name-empty'], ['x'.repeat(NAME_MAX + 1), 'name-long']])('rejects %j with code %s', (name, code) => {
+    expect(addPreset([], name, recipe, 'custom-a', 't').error).toBe(code)
   })
   it('rejects duplicates, ignoring case and spaces, and names of built-in presets', () => {
     const list = make(1)
-    expect(validateName('preset 0', list)).toMatch(/already exists/)
-    expect(validateName(' PRESET 0 ', list)).toMatch(/already exists/)
-    expect(validateName('web banner', [])).toMatch(/already exists/)
+    expect(validateName('preset 0', list)).toBe('name-taken')
+    expect(validateName(' PRESET 0 ', list)).toBe('name-taken')
+    expect(validateName('web banner', [])).toBe('name-taken')
     expect(validateName('Preset 1', list)).toBeNull()
   })
   it(`stops at ${MAX_CUSTOM_PRESETS} presets`, () => {
     const full = make(MAX_CUSTOM_PRESETS)
     const r = addPreset(full, 'One more', recipe, 'custom-x', 't')
-    expect(r.error).toMatch(/up to 10/)
+    expect(r.error).toBe('limit')
     expect(r.list).toBe(full)
   })
 })
@@ -44,7 +44,7 @@ suite('renaming and removing', () => {
   it('renames, allowing the preset to keep its own name', () => {
     const list = make(2)
     expect(renamePreset(list, 'custom-0', 'Preset 0').error).toBeNull()
-    expect(renamePreset(list, 'custom-0', 'Preset 1').error).toMatch(/already exists/)
+    expect(renamePreset(list, 'custom-0', 'Preset 1').error).toBe('name-taken')
     expect(renamePreset(list, 'custom-0', 'Renamed').list[0].name).toBe('Renamed')
   })
   it('removes by id', () => {
@@ -88,9 +88,46 @@ suite('using a preset', () => {
     const p = toPreset(make(1)[0])
     expect(p).toMatchObject({ id: 'custom-0', label: 'Preset 0', custom: true, format: 'jpeg', quality: 70, width: 800, pattern: recipe.pattern })
   })
-  it('describe gives a readable one-liner', () => {
-    expect(describe(recipe)).toBe('800×600 · Fit · JPEG Q70')
-    expect(describe({ ...recipe, resizeMode: 'original', format: 'png' })).toBe('Original size · Original · PNG')
-    expect(describe({ ...recipe, resizeMode: 'width', format: 'webp', quality: 80 })).toBe('Width 800 · Width · WebP Q80')
+})
+
+suite('updating a preset', () => {
+  const next = { ...recipe, quality: 55, format: 'webp' as const }
+  it('replaces the recipe but keeps id, name and createdAt', () => {
+    const [a, b] = updatePreset(make(2), 'custom-1', next)
+    expect(a).toEqual(make(2)[0])
+    expect(b).toEqual({ id: 'custom-1', name: 'Preset 1', createdAt: '2026-01-01', recipe: next })
   })
+  it('leaves the list alone for an unknown id', () => expect(updatePreset(make(2), 'custom-nope', next)).toEqual(make(2)))
+})
+
+suite('isModified', () => {
+  const custom = toPreset(make(1)[0]) // jpeg q70 800x600, full recipe
+  const same = { ...DEFAULT_SETTINGS, ...recipe, presetId: 'custom-0' }
+  const builtIn = PRESETS[0]
+  const onBuiltIn = { ...DEFAULT_SETTINGS, width: builtIn.width, height: builtIn.height, format: builtIn.format, quality: builtIn.quality, presetId: builtIn.id }
+  it('is false when the settings equal the preset', () => {
+    expect(isModified(same, custom)).toBe(false)
+    expect(isModified(onBuiltIn, builtIn)).toBe(false)
+  })
+  it('is true when size, format or quality differ', () => {
+    expect(isModified({ ...same, quality: 71 }, custom)).toBe(true)
+    expect(isModified({ ...same, width: 801 }, custom)).toBe(true)
+    expect(isModified({ ...onBuiltIn, format: 'png' }, builtIn)).toBe(true)
+  })
+  it('checks the extra recipe fields only for presets that carry them', () => {
+    expect(isModified({ ...same, pattern: '{index}' }, custom)).toBe(true)
+    expect(isModified({ ...same, removeMetadata: !same.removeMetadata }, custom)).toBe(true)
+    expect(isModified({ ...onBuiltIn, resizeMode: 'cover', pattern: 'x', padding: 5, removeMetadata: false, background: '#000000' }, builtIn)).toBe(false)
+  })
+  it('does not throw for a preset that lacks optional fields', () => {
+    expect(() => isModified(onBuiltIn, { id: 'p', label: 'P', width: 1, height: 1, format: 'webp', quality: 80 })).not.toThrow()
+  })
+})
+
+suite('presetSummary', () => {
+  const base = { width: 1600, height: 900, format: 'webp' as const, quality: 80 }
+  it('shows size, format and quality', () => expect(presetSummary(base, 'Original size')).toBe('1600×900 · WEBP · Q80'))
+  it('omits quality for PNG', () => expect(presetSummary({ ...base, format: 'png' }, 'Original size')).toBe('1600×900 · PNG'))
+  it('uses the given label for Original mode', () => expect(presetSummary({ ...base, resizeMode: 'original', format: 'jpeg' }, 'Giữ nguyên')).toBe('Giữ nguyên · JPEG · Q80'))
+  it('shows just the width for Width mode', () => expect(presetSummary({ ...base, resizeMode: 'width' }, 'x')).toBe('1600px · WEBP · Q80'))
 })

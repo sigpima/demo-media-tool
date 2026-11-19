@@ -1,14 +1,16 @@
+import { useI18n } from '../i18n'
 import type { Batch } from '../state/useBatch'
 import { AssetCard } from './AssetCard'
 
 export function AssetGrid({ batch, onCompare }: { batch: Batch; onCompare: (id: string) => void }) {
+  const { t } = useI18n()
   const { assets, phase, settings, selectedCount, inspected } = batch
   if (assets.length === 0) return null
   const busy = phase === 'processing' || phase === 'uploading'
   const all = selectedCount === assets.length
 
   return (
-    <section aria-label="Assets" className="flex flex-col gap-3">
+    <section aria-label={t('assets.section')} className="flex flex-col gap-3">
       <div className="flex items-center justify-between px-1 py-1 text-xs">
         <label className="flex select-none items-center gap-2 font-medium text-white">
           <input
@@ -16,11 +18,11 @@ export function AssetGrid({ batch, onCompare }: { batch: Batch; onCompare: (id: 
             ref={(el) => { if (el) el.indeterminate = selectedCount > 0 && !all }}
             onChange={() => batch.setAllSelected(!all)}
           />
-          <span aria-live="polite">{selectedCount} of {assets.length} assets selected</span>
+          <span aria-live="polite">{t('assets.selected', { n: selectedCount, total: assets.length })}</span>
         </label>
         {selectedCount > 0 && (
           <button type="button" className="text-primary hover:underline disabled:opacity-45" disabled={busy} onClick={() => batch.setAllSelected(false)}>
-            Select none
+            {t('assets.selectNone')}
           </button>
         )}
       </div>

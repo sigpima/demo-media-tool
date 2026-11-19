@@ -63,16 +63,19 @@ Radii: 4px controls, 8px cards/panels, 12px floating pills. Elevation = tonal la
 7. **Processing is indeterminate per file** (stripe animation + "Processing"), overall progress by file count.
    Pillow encodes are short and give no real per-file percent; the design must not promise one.
 8. **Status is never colour-only**: icon + text + colour.
-9. **Compare** is an inline panel under the grid (as in Stitch) and shows exact sizes only when they come from a real encode; estimates are labelled "est.".
+9. **Compare** is an inline panel under the grid (as in Stitch) with a single frame and a draggable vertical divider (original left, optimized right; `role=slider`, arrows 5%, Shift 20%, Home/End). The frame uses the output aspect ratio, capped at 70vh. Exact sizes are shown only when they come from a real encode; estimates are labelled "est.".
 10. Added missing MVP controls: **background colour for JPEG**, **prefix / padding / start index**, **Width** mode.
 11. Added missing states: **Empty, Uploading, Completed, Partial failure, Global failure** banners.
 12. Real files first: sample/demo assets only in dev (`?demo`).
+13. **Fitting mode** is a 2x2 radio grid of tiles (illustration + title + one line) instead of a dropdown.
+14. **Presets** live in the recipe panel as two tabs (Built-in | Mine) of one-line rows; editing keeps the selected preset and shows a "Modified" tag; custom presets can be renamed, deleted (two-step) and updated in place.
+15. **Language switch** EN | VI in the top bar; all UI text goes through `src/i18n` (server-returned text is not translated).
 
 ## 3. Removed from Stitch (not in MVP / not true for our backend)
 
 PRO v2.4 badge · user avatar "JD" · "Batch #409 …" history · "WASM+AVX-512" and "SIMD Engine / Cache RAM" telemetry ·
 Debug Console · Cloud Destinations · "Worker #n" naming and MB/s·ETA ticker (replaced by "Slot #1–3", the real concurrency limit) ·
-Table view · Sort by · Invert · Process Now (toolbar) · Processing History and Settings entries (were disabled "Soon" placeholders) · Save Preset (replaced by real browser-local presets: up to 10, saved from the recipe panel, managed in the Presets dialog) · Lanczos3 label · Lock Aspect Ratio (spec: never distort) ·
+Table view · Sort by · Invert · Process Now (toolbar) · Processing History and Settings entries (were disabled "Soon" placeholders) · Save Preset (replaced by real browser-local presets: up to 10, saved from the recipe panel, managed inline in the recipe panel) · Lanczos3 label · Lock Aspect Ratio (spec: never distort) ·
 Stretch / Percentage fit modes · **AVIF** codec and "Mobile Story (AVIF)" preset · "Print Hi-Res" preset ·
 Preserve ICC profile · SSIM badge (unmeasured claim) · "Max 50MB" (we enforce our own limit).
 
@@ -82,8 +85,8 @@ Preserve ICC profile · SSIM badge (unmeasured claim) · "Max 50MB" (we enforce 
 Header (52px): brand · batch name · 3-step indicator ──────────────────────────
 Sidebar 56→224px | Main (scroll): toolbar · banner/pipeline · dropzone · grid · compare | Inspector 320px
 ```
-Inspector ("Batch Recipe"): Presets → Geometry → Codec & Quality → Naming → Sanitization → footer actions.
-Sidebar rail: **Workspace** and **Presets** (opens the preset library dialog; focus returns to the button when it closes).
+Inspector ("Batch Recipe"): Presets (tabs) → Geometry (fit-mode tiles) → Codec & Quality → Naming → Sanitization → footer actions.
+Sidebar rail: **Workspace** and **Presets** (opens the recipe panel, scrolls to the Presets section and focuses its selected tab).
 
 ## 5. States
 
@@ -104,6 +107,7 @@ Card variants: ready · queued · processing · completed (−% badge, out size,
 - Visible focus ring (`primary`, 2px, offset 2px) on every interactive element; never `outline: none` without replacement.
 - Drag-and-drop always has a Browse button; keyboard can select, remove, retry, download.
 - Errors: per-card message + banner with `role="alert"`; status changes announced in an `aria-live="polite"` region.
+- Fit-mode tiles are a `radiogroup` (arrow keys move the selection); Presets use the WAI-ARIA tabs pattern (roving tabindex, Left/Right/Home/End); the compare divider is a `slider` with `aria-valuetext`.
 - Slider/switch via Radix (keyboard + ARIA built in). Quality slider disabled (with explanation) for PNG.
 - Transitions 150–250ms colour/opacity only; `prefers-reduced-motion` disables spin/pulse/stripe animations.
 - Icons: lucide SVG, decorative ones `aria-hidden`, icon-only buttons have `aria-label`.

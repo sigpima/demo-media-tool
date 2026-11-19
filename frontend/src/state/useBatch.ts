@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { describeError } from '../i18n/errors'
+import type { TFn } from '../i18n'
 import { DEFAULT_SETTINGS } from '../lib/constants'
 import type { Limits } from '../lib/limits'
 import { estimateOutputSize } from '../lib/estimate'
@@ -32,7 +34,11 @@ export function derivePhase(mode: Mode, assets: Asset[]): Phase {
   return assets.some((a) => a.inBatch && a.status === 'failed') ? 'partial' : 'completed'
 }
 
-export function useBatch(limits: Limits, onUploaded?: () => void) {
+/**
+ * `t` translates the messages created here (toasts, announcements, the global error). A message keeps the language it was
+ * created in; the rest of the UI re-renders in the new language at once.
+ */
+export function useBatch(limits: Limits, t: TFn, onUploaded?: () => void) {
   const [assets, setAssets] = useState<Asset[]>([])
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
   const [mode, setMode] = useState<Mode>('idle')
@@ -41,6 +47,8 @@ export function useBatch(limits: Limits, onUploaded?: () => void) {
   const [toasts, setToasts] = useState<Toast[]>([])
   const [announcement, setAnnouncement] = useState('')
 
+  const tRef = useRef(t)
+  tRef.current = t
   const assetsRef = useRef(assets)
   assetsRef.current = assets
   const settingsRef = useRef(settings)
@@ -105,9 +113,9 @@ export function useBatch(limits: Limits, onUploaded?: () => void) {
         setAssets([])
         assetsRef.current = []
       }
-      const { assets: prepared, rejected } = prepareFiles(files, assetsRef.current.length, limitsRef.current)
+      const { assets: prepared, rejected } = prepareFiles(files, assetsRef.current.length, limitsRef.current, tRef.current)
       const skipped = rejected.map((r) => `${r.name}: ${r.reason}`)
-      if (!prepared.length) return skipped.length ? notify(skippedMessage(skipped)) : undefined
+      if (!prepared.length) return skipped.length ? notify(skippedMessage(skipped, tRef.current)) : undefined
 
       const controller = new AbortController()
       abortRef.current = controller
@@ -139,7 +147,7 @@ export function useBatch(limits: Limits, onUploaded?: () => void) {
               }
             } catch (e) {
               if (aborted(e)) throw e
-              skipped.push(`${asset.name}: ${(e as Error).message}`)
+              skipped.push(`${asset.name}: ${describeError(e, tRef.current)}`)
               removeLocal(asset.id)
             }
           }
@@ -147,13 +155,13 @@ export function useBatch(limits: Limits, onUploaded?: () => void) {
         await Promise.all(Array.from({ length: UPLOAD_PARALLELISM }, worker))
       } catch (e) {
         if (aborted(e)) return
-        skipped.push((e as Error).message)
+        skipped.push(describeError(e, tRef.current))
         assetsRef.current.filter(isLocal).forEach((a) => removeLocal(a.id))
       }
       setMode('idle')
       onUploadedRef.current?.() // e.g. refresh "images left today"
-      if (skipped.length) notify(skippedMessage(skipped))
-      if (uploaded) setAnnouncement(`${uploaded} image${uploaded > 1 ? 's' : ''} uploaded`)
+      if (skipped.length) notify(skippedMessage(skipped, tRef.current))
+      if (uploaded) setAnnouncement(tRef.current('announce.uploaded', { count: uploaded }))
     },
     [mode, notify, patch],
   )
@@ -162,7 +170,7 @@ export function useBatch(limits: Limits, onUploaded?: () => void) {
   const finishRun = useCallback(() => {
     setMode('idle')
     const failed = assetsRef.current.filter((a) => a.inBatch && a.status === 'failed').length
-    setAnnouncement(failed ? `Processing finished. ${failed} failed.` : 'Processing finished. All images completed.')
+    setAnnouncement(failed ? tRef.current('announce.finishedFailed', { failed }) : tRef.current('announce.finishedOk'))
   }, [])
 
   /** Demo mode: the simulated worker pool in services/mockService.ts. */
@@ -178,7 +186,7 @@ export function useBatch(limits: Limits, onUploaded?: () => void) {
         if (!controller.signal.aborted) finishRun()
       } catch (e) {
         if (!aborted(e)) {
-          setGlobalError('The processing service stopped unexpectedly. Your files are still here.')
+          setGlobalError(tRef.current('batch.stopped'))
           setMode('failed')
         }
       }
@@ -228,7 +236,7 @@ export function useBatch(limits: Limits, onUploaded?: () => void) {
       } catch (e) {
         if (aborted(e)) return
         const expired = e instanceof api.ApiError && e.status === 404
-        setGlobalError(expired ? 'This batch has expired on the server. Please upload your images again.' : (e as Error).message || 'The processing service stopped unexpectedly.')
+        setGlobalError(expired ? tRef.current('batch.expired') : e instanceof Error && e.message ? describeError(e, tRef.current) : tRef.current('batch.stoppedShort'))
         setMode('failed')
       }
     },
@@ -273,7 +281,7 @@ export function useBatch(limits: Limits, onUploaded?: () => void) {
   const remove = useCallback(
     (id: string) => {
       const target = assetsRef.current.find((a) => a.id === id)
-      if (target && !isLocal(target) && batchIdRef.current && !isDemo([target])) api.deleteAsset(batchIdRef.current, id).catch((e: Error) => notify(e.message))
+      if (target && !isLocal(target) && batchIdRef.current && !isDemo([target])) api.deleteAsset(batchIdRef.current, id).catch((e: unknown) => notify(describeError(e, tRef.current)))
       setAssets((p) => {
         p.filter((a) => a.id === id).forEach(revoke)
         return p.filter((a) => a.id !== id)
@@ -295,13 +303,13 @@ export function useBatch(limits: Limits, onUploaded?: () => void) {
   /* ------------------------------ export & download ------------------------------ */
   const exportZip = useCallback(() => {
     const done = assetsRef.current.filter((a) => a.status === 'completed').length
-    if (!batchIdRef.current || isDemo(assetsRef.current)) return notify(`Demo mode: would download a ZIP with ${done} processed files, manifest.json and processing_report.csv`)
+    if (!batchIdRef.current || isDemo(assetsRef.current)) return notify(tRef.current('demo.zip', { n: done }))
     api.triggerDownload(api.exportUrl(batchIdRef.current))
   }, [notify])
   const download = useCallback(
     (id: string) => {
       const a = assetsRef.current.find((x) => x.id === id)
-      if (!batchIdRef.current || !a || isDemo([a])) return notify(`Demo mode: would download ${a?.outName ?? 'file'}`)
+      if (!batchIdRef.current || !a || isDemo([a])) return notify(tRef.current('demo.file', { name: a?.outName ?? 'file' }))
       api.triggerDownload(api.downloadUrl(batchIdRef.current, id))
     },
     [notify],
@@ -333,7 +341,7 @@ export function useBatch(limits: Limits, onUploaded?: () => void) {
       if (target === 'partial') return setAssets(base.map((a) => (a.demoFail ? { ...a, inBatch: true, status: 'failed' as const, error: a.demoFail } : done(a))))
       if (target === 'failed') {
         setAssets(base)
-        setGlobalError('Could not reach the processing service. Your files are still here — nothing was lost.')
+        setGlobalError(tRef.current('batch.unreachable'))
         return setMode('failed')
       }
       // processing: some already done, the rest runs through the simulated worker pool
@@ -368,9 +376,9 @@ export function useBatch(limits: Limits, onUploaded?: () => void) {
   }
 }
 
-function skippedMessage(skipped: string[]): string {
-  const first = skipped.slice(0, 2).join(' · ')
-  return `${skipped.length} file${skipped.length > 1 ? 's' : ''} skipped — ${first}${skipped.length > 2 ? ' …' : ''}`
+function skippedMessage(skipped: string[], t: TFn): string {
+  const details = skipped.slice(0, 2).join(' · ') + (skipped.length > 2 ? ' …' : '')
+  return t('upload.skipped', { count: skipped.length, details })
 }
 
 export type Batch = ReturnType<typeof useBatch>

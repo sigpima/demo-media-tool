@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { addPreset, parseStored, removePreset, renamePreset, STORAGE_KEY, type CustomPreset, type PresetRecipe, type Result } from '../lib/presetStore'
+import { addPreset, parseStored, removePreset, renamePreset, STORAGE_KEY, updatePreset, type CustomPreset, type PresetRecipe, type Result } from '../lib/presetStore'
 
 const newId = () => `custom-${crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)}`
 
@@ -38,6 +38,7 @@ export function usePresets() {
     list,
     add: (name: string, recipe: PresetRecipe) => apply(addPreset(list, name, recipe, newId(), new Date().toISOString())),
     rename: (id: string, name: string) => apply(renamePreset(list, id, name)),
+    update: (id: string, recipe: PresetRecipe) => commit(updatePreset(list, id, recipe)),
     remove: (id: string) => commit(removePreset(list, id)),
   }
 }

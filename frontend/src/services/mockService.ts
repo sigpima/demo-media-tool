@@ -5,6 +5,7 @@
  *
  * NOTE: sizes produced here are simulated. The real backend returns exact sizes from a real encode.
  */
+import type { TFn } from '../i18n'
 import { ACCEPTED_MIME, CONCURRENCY } from '../lib/constants'
 import type { Limits } from '../lib/limits'
 import { estimateOutputSize } from '../lib/estimate'
@@ -30,13 +31,13 @@ export interface RejectedFile {
  * Client-side validation + local previews, so the UI reacts instantly (the server validates again by decoding the
  * file). Dimensions are unknown here (0) — the server reports them after the upload.
  */
-export function prepareFiles(files: File[], alreadyHave: number, limits: Limits): { assets: Array<{ asset: Asset; file: File }>; rejected: RejectedFile[] } {
+export function prepareFiles(files: File[], alreadyHave: number, limits: Limits, t: TFn): { assets: Array<{ asset: Asset; file: File }>; rejected: RejectedFile[] } {
   const assets: Array<{ asset: Asset; file: File }> = []
   const rejected: RejectedFile[] = []
   for (const file of files) {
-    if (alreadyHave + assets.length >= limits.maxFiles) rejected.push({ name: file.name, reason: `Limit of ${limits.maxFiles} files per batch` })
-    else if (!ACCEPTED_MIME.includes(file.type)) rejected.push({ name: file.name, reason: 'Only JPG, PNG and WebP are supported' })
-    else if (file.size > limits.maxFileBytes) rejected.push({ name: file.name, reason: `Larger than ${Math.round(limits.maxFileBytes / 1024 / 1024)} MB` })
+    if (alreadyHave + assets.length >= limits.maxFiles) rejected.push({ name: file.name, reason: t('upload.limitFiles', { max: limits.maxFiles }) })
+    else if (!ACCEPTED_MIME.includes(file.type)) rejected.push({ name: file.name, reason: t('upload.onlyTypes') })
+    else if (file.size > limits.maxFileBytes) rejected.push({ name: file.name, reason: t('upload.tooLarge', { mb: Math.round(limits.maxFileBytes / 1024 / 1024) }) })
     else
       assets.push({
         file,
