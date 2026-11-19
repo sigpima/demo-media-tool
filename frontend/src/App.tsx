@@ -43,8 +43,11 @@ export default function App() {
     setRecipeOpen(true)
     requestAnimationFrame(() => {
       const section = document.getElementById('presets-section')
-      section?.scrollIntoView({ block: 'start', behavior: 'smooth' })
-      section?.querySelector<HTMLElement>('[role=tab][aria-selected=true]')?.focus({ preventScroll: true })
+      const box = section?.closest('fieldset') // scroll only the recipe list; scrollIntoView would also move the whole page
+      if (section && box) box.scrollTo({ top: box.scrollTop + section.getBoundingClientRect().top - box.getBoundingClientRect().top - 16, behavior: 'smooth' })
+      const tab = section?.querySelector<HTMLElement>('[role=tab][aria-selected=true]')
+      tab?.focus({ preventScroll: true })
+      if (document.activeElement !== tab) section?.focus({ preventScroll: true }) // tabs are disabled while a batch is processing
     })
   }, [])
 
@@ -63,7 +66,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-surface-container-lowest text-on-surface selection:bg-primary/30 selection:text-white">
+    <div className="relative flex h-screen flex-col overflow-clip bg-surface-container-lowest text-on-surface selection:bg-primary/30 selection:text-white">
       <TopBar phase={phase} batchName={batchName} guest={config?.role === 'guest' ? config : undefined} recipeOpen={recipeOpen} onToggleRecipe={() => setRecipeOpen((o) => !o)} />
 
       <div className="flex min-h-0 flex-1">
@@ -98,7 +101,7 @@ export default function App() {
           )}
         </main>
 
-        <Inspector batch={batch} presets={presets} open={recipeOpen} onClose={() => setRecipeOpen(false)} />
+        <Inspector batch={batch} presets={presets} open={recipeOpen} onClose={() => { setRecipeOpen(false); document.querySelector<HTMLElement>('button[aria-controls=recipe-panel]')?.focus() }} />
       </div>
 
       <input

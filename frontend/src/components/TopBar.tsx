@@ -17,7 +17,7 @@ export function TopBar({ phase, batchName, guest, onToggleRecipe, recipeOpen }: 
   const current = stepIndex[phase]
   const allDone = phase === 'completed'
   return (
-    <header className="z-40 flex h-13 shrink-0 select-none items-center justify-between gap-4 border-b border-outline-variant/60 bg-surface px-4">
+    <header className="z-40 flex h-13 shrink-0 select-none items-center justify-between gap-4 border-b border-outline-variant/60 bg-surface px-4 desk:grid desk:grid-cols-[1fr_auto_1fr]">
       <div className="flex min-w-0 items-center gap-4">
         <div className="flex items-center gap-2.5">
           <div className="flex h-7 w-7 items-center justify-center rounded-md border border-primary/40 bg-primary/20 text-primary shadow-[0_0_12px_rgba(129,140,248,0.25)]">
@@ -66,7 +66,7 @@ export function TopBar({ phase, batchName, guest, onToggleRecipe, recipeOpen }: 
         })}
       </ol>
 
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2 desk:justify-self-end">
         <button type="button" onClick={onToggleRecipe} aria-expanded={recipeOpen} aria-controls="recipe-panel" className="btn-ghost desk:hidden">
           <SlidersHorizontal className="h-4 w-4" aria-hidden />
           {t('topbar.recipe')}
@@ -95,7 +95,7 @@ function LangSwitch() {
   const { lang, setLang, t } = useI18n()
   return (
     <div className="w-[88px] shrink-0">
-      <Segmented<Lang> label={t('lang.switch')} value={lang} onChange={setLang} options={[{ value: 'en', label: 'EN' }, { value: 'vi', label: 'VI' }]} />
+      <Segmented<Lang> label={t('lang.switch')} value={lang} onChange={setLang} options={[{ value: 'en', label: 'EN', ariaLabel: 'English', lang: 'en' }, { value: 'vi', label: 'VI', ariaLabel: 'Tiếng Việt', lang: 'vi' }]} />
     </div>
   )
 }

@@ -31,6 +31,7 @@ export function PresetsSection({ presets, settings, onApply, onDeselect }: Props
   const selected = [...PRESETS, ...mine].find((p) => p.id === selectedId)
   const [tab, setTab] = useState<Tab>(() => (PRESETS.some((p) => p.id === selectedId) ? 'builtin' : presets.list.length ? 'mine' : 'builtin'))
   const tabRefs = useRef<Partial<Record<Tab, HTMLButtonElement | null>>>({})
+  const [announcement, setAnnouncement] = useState('') // what screen readers hear after a change
 
   // A selected custom preset that vanished (deleted in another tab, storage edited): drop the selection.
   useEffect(() => {
@@ -48,7 +49,7 @@ export function PresetsSection({ presets, settings, onApply, onDeselect }: Props
   const rows = tab === 'builtin' ? PRESETS : mine
   const canUpdate = !!selected?.custom && isModified(settings, selected)
   return (
-    <section id="presets-section" aria-labelledby="presets-heading" className="flex flex-col gap-2">
+    <section id="presets-section" aria-labelledby="presets-heading" tabIndex={-1} className="flex flex-col gap-2 outline-none">
       <h3 id="presets-heading" className="section-label">{t('presets.title')}</h3>
 
       <div role="tablist" aria-label={t('presets.tabs')} className="flex gap-0.5 rounded-lg bg-surface-container-lowest p-0.5 text-xs">
@@ -71,7 +72,8 @@ export function PresetsSection({ presets, settings, onApply, onDeselect }: Props
             {rows.map((p) =>
               p.custom ? (
                 <CustomRow key={p.id} preset={p} active={selectedId === p.id} modified={selectedId === p.id && isModified(settings, p)} presets={presets}
-                  onApply={() => onApply(p)} onRemoved={() => { if (selectedId === p.id) onDeselect(); tabRefs.current.mine?.focus() }} />
+                  onApply={() => onApply(p)} onChanged={(msg) => setAnnouncement(msg)}
+                  onRemoved={() => { if (selectedId === p.id) onDeselect(); tabRefs.current.mine?.focus() }} />
               ) : (
                 <li key={p.id}>
                   <RowButton preset={p} active={selectedId === p.id} modified={selectedId === p.id && isModified(settings, p)} onClick={() => onApply(p)} />
@@ -84,12 +86,13 @@ export function PresetsSection({ presets, settings, onApply, onDeselect }: Props
 
       <div className="flex flex-col gap-1.5 pt-1">
         {canUpdate && selected && (
-          <button type="button" className="btn-ghost w-full !py-1.5" onClick={() => { presets.update(selected.id, recipeFrom(settings)); focusAfterRender(rowSelector(selected.id)) }}>
+          <button type="button" className="btn-ghost w-full !py-1.5" onClick={() => { presets.update(selected.id, recipeFrom(settings)); setAnnouncement(t('presets.announce.updated', { name: selected.label })); focusAfterRender(rowSelector(selected.id)) }}>
             <span className="min-w-0 truncate">{t('presets.update', { name: selected.label })}</span>
           </button>
         )}
-        <SaveNew presets={presets} settings={settings} onSaved={(p) => { setTab('mine'); onApply(p); focusAfterRender(rowSelector(p.id)) }} />
+        <SaveNew presets={presets} settings={settings} onSaved={(p) => { setTab('mine'); onApply(p); setAnnouncement(t('presets.announce.saved', { name: p.label })); focusAfterRender(rowSelector(p.id)) }} />
       </div>
+      <div role="status" aria-live="polite" className="sr-only">{announcement}</div>
       <p className="flex items-start gap-1.5 text-[11px] text-muted"><Info className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />{t('presets.note')}</p>
     </section>
   )
@@ -113,7 +116,7 @@ function RowButton({ preset, active, modified, onClick }: { preset: Preset; acti
 
 const errorText = (t: TFn, code: PresetError) => t(`presets.error.${code}`, { max: code === 'limit' ? MAX_CUSTOM_PRESETS : NAME_MAX })
 
-function CustomRow({ preset, active, modified, presets, onApply, onRemoved }: { preset: Preset; active: boolean; modified: boolean; presets: Presets; onApply: () => void; onRemoved: () => void }) {
+function CustomRow({ preset, active, modified, presets, onApply, onRemoved, onChanged }: { preset: Preset; active: boolean; modified: boolean; presets: Presets; onApply: () => void; onRemoved: () => void; onChanged: (message: string) => void }) {
   const { t } = useI18n()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(preset.label)
@@ -121,7 +124,7 @@ function CustomRow({ preset, active, modified, presets, onApply, onRemoved }: { 
   const [confirming, setConfirming] = useState(false)
   const input = useRef<HTMLInputElement>(null)
 
-  useEffect(() => { if (editing) input.current?.select() }, [editing])
+  useEffect(() => { if (editing) { input.current?.focus(); input.current?.select() } }, [editing])
   useEffect(() => {
     if (!confirming) return
     const timer = setTimeout(() => setConfirming(false), 3500) // an unconfirmed delete disarms itself
@@ -131,6 +134,7 @@ function CustomRow({ preset, active, modified, presets, onApply, onRemoved }: { 
   const save = () => {
     const r = presets.rename(preset.id, draft)
     if (r.error) return setError(r.error)
+    onChanged(t('presets.announce.renamed', { name: draft.trim() }))
     stopEditing()
   }
   const stopEditing = () => { setEditing(false); setError(null); focusAfterRender(renameSelector(preset.id)) }
@@ -159,7 +163,7 @@ function CustomRow({ preset, active, modified, presets, onApply, onRemoved }: { 
       <div className="min-w-0 flex-1"><RowButton preset={preset} active={active} modified={modified} onClick={onApply} /></div>
       <button type="button" className="btn-ghost !px-2" aria-label={t('presets.rename', { name: preset.label })} data-rename={preset.id} onClick={() => { setDraft(preset.label); setEditing(true) }}><Pencil className="h-3.5 w-3.5" aria-hidden /></button>
       {confirming ? (
-        <button type="button" className="btn border border-error/50 !bg-error-container !px-2 !text-error" onClick={() => { presets.remove(preset.id); onRemoved() }}>{t('presets.deleteConfirm')}</button>
+        <button type="button" className="btn border border-error/50 !bg-error-container !px-2 !text-error" aria-label={t('presets.deleteConfirmLabel', { name: preset.label })} onClick={() => { presets.remove(preset.id); onChanged(t('presets.announce.deleted', { name: preset.label })); onRemoved() }}>{t('presets.deleteConfirm')}</button>
       ) : (
         <button type="button" className="btn-ghost !px-2 hover:!text-error" aria-label={t('presets.delete', { name: preset.label })} onClick={() => setConfirming(true)}><Trash2 className="h-3.5 w-3.5" aria-hidden /></button>
       )}

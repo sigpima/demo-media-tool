@@ -4,6 +4,9 @@ import { useRef } from 'react'
 interface Option<T extends string> {
   value: T
   label: string
+  /** Full accessible name (e.g. a language written in itself) and the language it is written in. */
+  ariaLabel?: string
+  lang?: string
 }
 
 /** Radio group rendered as pills. Arrow keys move the selection (WAI-ARIA radio pattern). */
@@ -49,6 +52,8 @@ export function Segmented<T extends string>({
             aria-checked={active}
             tabIndex={active ? 0 : -1}
             disabled={disabled}
+            aria-label={o.ariaLabel}
+            lang={o.lang}
             onClick={() => onChange(o.value)}
             onKeyDown={(e) => onKey(e, i)}
             className={clsx(

@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { setFormatLocale } from '../lib/format'
 import { en, type Key } from './en'
 import { vi } from './vi'
 
@@ -51,6 +52,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.lang = lang
   }, [lang])
+  setFormatLocale(lang) // before children render, so sizes are formatted in the active language
   const value = useMemo<I18n>(
     () => ({
       lang,

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { addPreset, parseStored, removePreset, renamePreset, STORAGE_KEY, updatePreset, type CustomPreset, type PresetRecipe, type Result } from '../lib/presetStore'
+import { addPreset, isPresetsStorageEvent, parseStored, removePreset, renamePreset, STORAGE_KEY, updatePreset, type CustomPreset, type PresetRecipe, type Result } from '../lib/presetStore'
 
 const newId = () => `custom-${crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)}`
 
@@ -25,7 +25,7 @@ export function usePresets() {
   }, [])
 
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => e.key === STORAGE_KEY && setList(read())
+    const onStorage = (e: StorageEvent) => isPresetsStorageEvent(e.key) && setList(read())
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)
   }, [])

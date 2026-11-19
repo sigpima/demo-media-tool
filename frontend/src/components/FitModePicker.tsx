@@ -5,8 +5,8 @@ import type { ResizeMode } from '../types'
 
 const MODES: ResizeMode[] = ['fit', 'cover', 'width', 'original']
 
-/** 2x2 grid of tiles (illustration + name + one line) instead of a dropdown. Native radios give arrow-key navigation. */
-export function FitModePicker({ value, onChange, disabled }: { value: ResizeMode; onChange: (v: ResizeMode) => void; disabled?: boolean }) {
+/** 2x2 grid of tiles (illustration + name + one line) instead of a dropdown. Arrow keys are handled explicitly (like Segmented). */
+export function FitModePicker({ value, onChange }: { value: ResizeMode; onChange: (v: ResizeMode) => void }) {
   const { t } = useI18n()
   const labelId = useId()
   const inputs = useRef<Array<HTMLInputElement | null>>([])
@@ -26,7 +26,7 @@ export function FitModePicker({ value, onChange, disabled }: { value: ResizeMode
         {MODES.map((m, i) => (
           <label key={m} className="relative cursor-pointer">
             <input
-              type="radio" name="fit-mode" value={m} checked={value === m} disabled={disabled}
+              type="radio" name="fit-mode" value={m} checked={value === m}
               ref={(el) => (inputs.current[i] = el)} onChange={() => onChange(m)} onKeyDown={(e) => onKey(e, i)} className="peer sr-only"
             />
             <span
@@ -69,9 +69,10 @@ function FitIcon({ mode }: { mode: ResizeMode }) {
       )}
       {mode === 'width' && (
         <>
-          <rect x="10" y="9" width="44" height="22" rx="1.5" fill="currentColor" opacity="0.85" />
-          <path d="M10 5h44M10 3v4M54 3v4" stroke="currentColor" strokeWidth="1.2" fill="none" />
-          <path d="M58 9v22M56 9h4M56 31h4" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 2" fill="none" opacity="0.7" />
+          <rect x="3" y="9" width="36" height="22" rx="1.5" fill="currentColor" opacity="0.85" />
+          <path d="M3 5h36M3 3v4M39 3v4" stroke="currentColor" strokeWidth="1.2" fill="none" />
+          <path d="M43 9v22M41 9h4M41 31h4" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 2" fill="none" opacity="0.7" />
+          <text x="47" y="22.5" fontSize="6.5" fill="currentColor" opacity="0.9" fontFamily="ui-monospace, monospace">auto</text>
         </>
       )}
       {mode === 'original' && (

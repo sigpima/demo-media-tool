@@ -79,6 +79,7 @@ function Frame({ pct, onChange, style, originalSrc, optimizedSrc, originalAlt, o
   const { t } = useI18n()
   const frame = useRef<HTMLDivElement>(null)
   const dragging = useRef(false)
+  const moved = useRef(false)
   const moveTo = (clientX: number) => {
     const r = frame.current?.getBoundingClientRect()
     if (r) onChange(pctFromPointer(clientX, r))
@@ -87,10 +88,17 @@ function Frame({ pct, onChange, style, originalSrc, optimizedSrc, originalAlt, o
     <div
       ref={frame} style={{ ...style, touchAction: 'pan-y' }}
       className="relative mx-auto max-w-full cursor-ew-resize select-none overflow-hidden rounded-lg border border-outline-variant/40 bg-black/40"
-      onPointerDown={(e) => { dragging.current = true; e.currentTarget.setPointerCapture(e.pointerId); moveTo(e.clientX) }}
-      onPointerMove={(e) => dragging.current && moveTo(e.clientX)}
-      onPointerUp={() => { dragging.current = false }}
+      onPointerDown={(e) => {
+        if (e.button !== 0) return // only the primary button drags
+        dragging.current = true
+        moved.current = false
+        try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* pointer already gone */ }
+        if (e.pointerType !== 'touch') moveTo(e.clientX) // a touch may turn into a scroll, so it only counts once it moves or ends as a tap
+      }}
+      onPointerMove={(e) => { if (dragging.current && e.buttons !== 0) { moved.current = true; moveTo(e.clientX) } }}
+      onPointerUp={(e) => { if (dragging.current && e.pointerType === 'touch' && !moved.current) moveTo(e.clientX); dragging.current = false }}
       onPointerCancel={() => { dragging.current = false }}
+      onLostPointerCapture={() => { dragging.current = false }}
     >
       <img src={originalSrc} alt={originalAlt} draggable={false} className="absolute inset-0 h-full w-full object-cover" />
       <img src={optimizedSrc} alt={optimizedAlt} draggable={false} className="absolute inset-0 h-full w-full object-cover" style={{ clipPath: `inset(0 0 0 ${pct}%)` }} />

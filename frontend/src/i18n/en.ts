@@ -45,7 +45,7 @@ export const en = {
   'presets.tab.builtin': 'Built-in',
   'presets.tab.mine': 'Mine',
   'presets.modified': 'Modified',
-    'presets.rename': 'Rename {name}',
+  'presets.rename': 'Rename {name}',
   'presets.delete': 'Delete {name}',
   'presets.deleteConfirm': 'Delete?',
   'presets.nameLabel': 'Preset name',
@@ -191,6 +191,11 @@ export const en = {
   'inspector.process_other': 'Process batch ({count} assets)',
   'inspector.export': 'Export all as ZIP',
   'app.drop': 'Drop images to add them to the batch',
+  'presets.deleteConfirmLabel': 'Confirm delete {name}',
+  'presets.announce.saved': 'Preset “{name}” saved',
+  'presets.announce.updated': 'Preset “{name}” updated',
+  'presets.announce.renamed': 'Preset renamed to “{name}”',
+  'presets.announce.deleted': 'Preset “{name}” deleted',
   'lang.switch': 'Language',
 }
 

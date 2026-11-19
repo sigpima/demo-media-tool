@@ -7,6 +7,9 @@ import type { OutputFormat, Preset, ResizeMode, Settings } from '../types'
 import { PRESETS } from './constants'
 import { labelFor } from './format'
 
+/** localStorage.clear() in another tab fires a storage event with key null. */
+export const isPresetsStorageEvent = (key: string | null): boolean => key === null || key === STORAGE_KEY
+
 export const MAX_CUSTOM_PRESETS = 10
 export const NAME_MAX = 30
 export const STORAGE_KEY = 'cbt.presets.v1'

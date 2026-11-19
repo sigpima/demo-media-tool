@@ -1,6 +1,6 @@
 import { describe as suite, expect, it } from 'vitest'
 import { DEFAULT_SETTINGS, PRESETS } from './constants'
-import { addPreset, isModified, MAX_CUSTOM_PRESETS, NAME_MAX, parseStored, presetSummary, recipeFrom, removePreset, renamePreset, toPreset, updatePreset, validateName, type CustomPreset } from './presetStore'
+import { addPreset, isModified, isPresetsStorageEvent, MAX_CUSTOM_PRESETS, NAME_MAX, parseStored, presetSummary, recipeFrom, removePreset, renamePreset, toPreset, updatePreset, validateName, type CustomPreset } from './presetStore'
 
 const recipe = recipeFrom({ ...DEFAULT_SETTINGS, format: 'jpeg', quality: 70, width: 800, height: 600 })
 const make = (n: number): CustomPreset[] =>
@@ -130,4 +130,12 @@ suite('presetSummary', () => {
   it('omits quality for PNG', () => expect(presetSummary({ ...base, format: 'png' }, 'Original size')).toBe('1600×900 · PNG'))
   it('uses the given label for Original mode', () => expect(presetSummary({ ...base, resizeMode: 'original', format: 'jpeg' }, 'Giữ nguyên')).toBe('Giữ nguyên · JPEG · Q80'))
   it('shows just the width for Width mode', () => expect(presetSummary({ ...base, resizeMode: 'width' }, 'x')).toBe('1600px · WEBP · Q80'))
+})
+
+suite('isPresetsStorageEvent', () => {
+  it('reacts to the presets key and to localStorage.clear() (key null), not to other keys', () => {
+    expect(isPresetsStorageEvent('cbt.presets.v1')).toBe(true)
+    expect(isPresetsStorageEvent(null)).toBe(true)
+    expect(isPresetsStorageEvent('cbt.lang')).toBe(false)
+  })
 })

@@ -1,5 +1,9 @@
+/** Number formatting follows the UI language; the i18n provider keeps this in sync. */
+let locale = 'en'
+export const setFormatLocale = (l: string) => { locale = l }
+
 export function formatBytes(bytes: number): string {
-  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+  if (bytes >= 1024 * 1024) return `${new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(bytes / 1024 / 1024)} MB`
   return `${Math.max(1, Math.round(bytes / 1024))} KB`
 }
 
