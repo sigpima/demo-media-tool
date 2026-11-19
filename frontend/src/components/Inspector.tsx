@@ -1,11 +1,14 @@
 import clsx from 'clsx'
-import { Archive, LoaderCircle, RefreshCw, SlidersHorizontal, X, Zap } from 'lucide-react'
+import { Archive, BookmarkCheck, BookmarkPlus, LoaderCircle, RefreshCw, SlidersHorizontal, X, Zap } from 'lucide-react'
+import { useState } from 'react'
 import { NAMING_TOKENS, PRESETS } from '../lib/constants'
 import { estimateOutputSize } from '../lib/estimate'
 import { formatBytes, formatDims, labelFor } from '../lib/format'
 import { outputSize } from '../lib/geometry'
 import { buildName } from '../lib/naming'
+import { MAX_CUSTOM_PRESETS, NAME_MAX, recipeFrom, toPreset } from '../lib/presetStore'
 import type { Batch } from '../state/useBatch'
+import type { Presets } from '../state/usePresets'
 import type { Asset, OutputFormat, ResizeMode } from '../types'
 import { NumberField } from './ui/NumberField'
 import { Segmented } from './ui/Segmented'
@@ -26,7 +29,7 @@ const PLACEHOLDER: Asset = {
   uploadProgress: 100, status: 'pending', inBatch: false,
 }
 
-export function Inspector({ batch, open, onClose }: { batch: Batch; open: boolean; onClose: () => void }) {
+export function Inspector({ batch, presets, open, onClose, onManagePresets }: { batch: Batch; presets: Presets; open: boolean; onClose: () => void; onManagePresets: () => void }) {
   const { settings: s, updateSettings: set, phase, assets } = batch
   const locked = phase === 'processing'
   const lossy = s.format !== 'png'
@@ -59,22 +62,23 @@ export function Inspector({ batch, open, onClose }: { batch: Batch; open: boolea
         <section className="flex flex-col gap-1.5">
           <h3 className="section-label">Workflow presets</h3>
           <div className="grid grid-cols-2 gap-1.5">
-            {PRESETS.map((p) => {
+            {[...PRESETS, ...presets.list.map(toPreset)].map((p) => {
               const active = s.presetId === p.id
               return (
                 <button
-                  key={p.id} type="button" aria-pressed={active} onClick={() => batch.applyPreset(p.id)}
+                  key={p.id} type="button" aria-pressed={active} onClick={() => batch.applyPreset(p)}
                   className={clsx('flex flex-col rounded-lg border p-2 text-left transition-all', active ? 'border-primary/70 bg-surface-container-highest shadow-glow-sm' : 'border-outline-variant/50 bg-surface-container hover:bg-surface-container-high')}
                 >
-                  <span className="flex items-center justify-between">
+                  <span className="flex items-center justify-between gap-1">
                     <span className={clsx('truncate', active ? 'font-semibold text-primary' : 'font-medium text-white')}>{p.label}</span>
-                    {active && <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />}
+                    {p.custom ? <BookmarkCheck className={clsx('h-3 w-3 shrink-0', active ? 'text-primary' : 'text-muted')} aria-label="Saved preset" /> : active && <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />}
                   </span>
                   <span className={clsx('font-mono text-[11px]', active ? 'text-white/80' : 'text-muted')}>{p.width}×{p.height} · {labelFor(p.format)}</span>
                 </button>
               )
             })}
           </div>
+          <SavePreset presets={presets} settings={s} onSaved={(id) => set({ presetId: id })} onManage={onManagePresets} />
         </section>
 
         <hr className="border-outline-variant/40" />
@@ -191,5 +195,51 @@ function Footer({ batch }: { batch: Batch }) {
         <Archive className="h-4 w-4" aria-hidden /> Export all as ZIP{exportable ? ` (${formatBytes(outputTotal)})` : ''}
       </button>
     </div>
+  )
+}
+
+/** "Save current settings as preset": a one-field inline form. */
+function SavePreset({ presets, settings, onSaved, onManage }: { presets: Presets; settings: Batch['settings']; onSaved: (id: string) => void; onManage: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const full = presets.list.length >= MAX_CUSTOM_PRESETS
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const r = presets.add(name, recipeFrom(settings))
+    if (r.error !== null) return setError(r.error)
+    if (r.added) onSaved(r.added.id)
+    setOpen(false)
+    setName('')
+    setError(null)
+  }
+
+  if (!open) {
+    return (
+      <div className="mt-2">
+        <div className="flex items-center justify-between gap-2">
+          <button type="button" className="btn-ghost !py-1 !text-[11px]" disabled={full} onClick={() => setOpen(true)}>
+            <BookmarkPlus className="h-3.5 w-3.5" aria-hidden /> Save current settings as preset
+          </button>
+          {presets.list.length > 0 && <button type="button" className="text-[11px] text-primary hover:underline" onClick={onManage}>Manage</button>}
+        </div>
+        {full && <p className="mt-1 text-[11px] text-muted">Preset limit reached ({MAX_CUSTOM_PRESETS}). Delete one in Manage to save another.</p>}
+      </div>
+    )
+  }
+  return (
+    <form onSubmit={submit} className="mt-2 flex flex-col gap-1.5 rounded-lg border border-outline-variant/60 bg-surface-container-low p-2.5">
+      <label htmlFor="preset-name" className="text-[11px] text-on-surface-variant">Preset name</label>
+      <input
+        id="preset-name" className="field" value={name} maxLength={NAME_MAX} autoFocus placeholder="e.g. Blog hero" aria-invalid={!!error} aria-describedby={error ? 'preset-name-error' : undefined}
+        onChange={(e) => { setName(e.target.value); setError(null) }} onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}
+      />
+      {error && <p id="preset-name-error" role="alert" className="text-[11px] text-error">{error}</p>}
+      <div className="flex gap-1.5">
+        <button type="submit" className="btn-primary !py-1.5 flex-1">Save preset</button>
+        <button type="button" className="btn-ghost" onClick={() => { setOpen(false); setError(null) }}>Cancel</button>
+      </div>
+    </form>
   )
 }

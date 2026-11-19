@@ -72,7 +72,7 @@ Radii: 4px controls, 8px cards/panels, 12px floating pills. Elevation = tonal la
 
 PRO v2.4 badge · user avatar "JD" · "Batch #409 …" history · "WASM+AVX-512" and "SIMD Engine / Cache RAM" telemetry ·
 Debug Console · Cloud Destinations · "Worker #n" naming and MB/s·ETA ticker (replaced by "Slot #1–3", the real concurrency limit) ·
-Table view · Sort by · Invert · Process Now (toolbar) · Save Preset · Lanczos3 label · Lock Aspect Ratio (spec: never distort) ·
+Table view · Sort by · Invert · Process Now (toolbar) · Processing History and Settings entries (were disabled "Soon" placeholders) · Save Preset (replaced by real browser-local presets: up to 10, saved from the recipe panel, managed in the Presets dialog) · Lanczos3 label · Lock Aspect Ratio (spec: never distort) ·
 Stretch / Percentage fit modes · **AVIF** codec and "Mobile Story (AVIF)" preset · "Print Hi-Res" preset ·
 Preserve ICC profile · SSIM badge (unmeasured claim) · "Max 50MB" (we enforce our own limit).
 
@@ -83,6 +83,7 @@ Header (52px): brand · batch name · 3-step indicator ────────�
 Sidebar 56→224px | Main (scroll): toolbar · banner/pipeline · dropzone · grid · compare | Inspector 320px
 ```
 Inspector ("Batch Recipe"): Presets → Geometry → Codec & Quality → Naming → Sanitization → footer actions.
+Sidebar rail: **Workspace** and **Presets** (opens the preset library dialog; focus returns to the button when it closes).
 
 ## 5. States
 

@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { DEFAULT_SETTINGS, PRESETS } from '../lib/constants'
+import { DEFAULT_SETTINGS } from '../lib/constants'
 import type { Limits } from '../lib/limits'
 import { estimateOutputSize } from '../lib/estimate'
 import { outputSize } from '../lib/geometry'
 import { resolveNames } from '../lib/naming'
 import * as api from '../services/api'
 import { prepareFiles, runProcessing, sampleAssets } from '../services/mockService'
-import type { Asset, Phase, Settings, Toast } from '../types'
+import type { Asset, Phase, Preset, Settings, Toast } from '../types'
 
 type Mode = 'idle' | 'uploading' | 'processing' | 'failed'
 
@@ -83,9 +83,17 @@ export function useBatch(limits: Limits, onUploaded?: () => void) {
 
   /* ------------------------------ settings ------------------------------ */
   const updateSettings = useCallback((p: Partial<Settings>) => setSettings((s) => ({ ...s, ...p })), [])
-  const applyPreset = useCallback((id: string) => {
-    const p = PRESETS.find((x) => x.id === id)
-    if (p) setSettings((s) => ({ ...s, presetId: p.id, width: p.width, height: p.height, format: p.format, quality: p.quality }))
+  const applyPreset = useCallback((p: Preset) => {
+    setSettings((s) => ({
+      ...s,
+      presetId: p.id, width: p.width, height: p.height, format: p.format, quality: p.quality,
+      // custom presets carry the whole recipe; built-in ones leave these as the user has them
+      ...(p.resizeMode !== undefined && { resizeMode: p.resizeMode }),
+      ...(p.background !== undefined && { background: p.background }),
+      ...(p.removeMetadata !== undefined && { removeMetadata: p.removeMetadata }),
+      ...(p.pattern !== undefined && { pattern: p.pattern }),
+      ...(p.padding !== undefined && { padding: p.padding }),
+    }))
   }, [])
 
   /* ------------------------------ upload ------------------------------ */

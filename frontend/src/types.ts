@@ -47,6 +47,7 @@ export interface Settings {
   startIndex: number
 }
 
+/** A one-click recipe. Built-in presets only set size/format/quality; custom ones carry the whole recipe. */
 export interface Preset {
   id: string
   label: string
@@ -54,6 +55,12 @@ export interface Preset {
   height: number
   format: OutputFormat
   quality: number
+  custom?: boolean
+  resizeMode?: ResizeMode
+  background?: string
+  removeMetadata?: boolean
+  pattern?: string
+  padding?: number
 }
 
 export interface Toast {

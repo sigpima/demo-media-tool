@@ -17,8 +17,9 @@ retry for failures, and a before/after check. No AI, no database: a deterministi
 | Naming | `{prefix} {index} {name} {date} {w} {h}`, zero-padding, collision-safe |
 | Processing | 3 images at a time; a failing file is isolated, shows its reason and can be retried |
 | Export | Single files or a ZIP with `processed/`, `manifest.json`, `processing_report.csv` |
+| Presets | 4 built-in + up to 10 of your own (size, format, quality, background, metadata choice, naming pattern). Saved in the browser (`localStorage`), nothing is uploaded |
 
-Not included on purpose (see `design-system/creative-batch-toolkit/MASTER.md` §3): accounts, history, database, AI features, AVIF.
+Not included on purpose (see `design-system/creative-batch-toolkit/MASTER.md` §3): accounts, processing history, settings page, database, AI features, AVIF.
 
 ## Run it locally (development)
 
@@ -43,7 +44,7 @@ every UI state; `/?demo&state=partial` opens a state directly.
 
 ```bash
 cd backend && . .venv/bin/activate && pytest      # 85 tests: image maths, naming, API, limits, auth, invites, rate limits, cleanup
-cd frontend && npm run typecheck
+cd frontend && npm run typecheck && npm test      # 22 unit tests for the preset storage (validation of untrusted localStorage)
 ```
 
 ## Deploy (GitHub Actions → GHCR → your server)

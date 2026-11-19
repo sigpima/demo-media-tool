@@ -4,6 +4,7 @@ import { AssetGrid } from './components/AssetGrid'
 import { ComparePanel } from './components/ComparePanel'
 import { DemoBar } from './components/DemoBar'
 import { Inspector } from './components/Inspector'
+import { PresetLibrary } from './components/PresetLibrary'
 import { Sidebar } from './components/Sidebar'
 import { StatusPanel } from './components/StatusPanel'
 import { Toaster } from './components/Toaster'
@@ -13,6 +14,7 @@ import { UploadZone } from './components/UploadZone'
 import { ACCEPTED_MIME } from './lib/constants'
 import { useBatch } from './state/useBatch'
 import { useConfig } from './state/useConfig'
+import { usePresets } from './state/usePresets'
 import type { Phase } from './types'
 
 const showDemo = import.meta.env.DEV || new URLSearchParams(location.search).has('demo')
@@ -21,6 +23,13 @@ const batchName = `creative_batch_${new Date().toISOString().slice(0, 10).replac
 export default function App() {
   const { config, limits, refresh } = useConfig()
   const batch = useBatch(limits, refresh)
+  const presets = usePresets()
+  const [libraryOpen, setLibraryOpen] = useState(false)
+  const libraryOpener = useRef<HTMLElement | null>(null)
+  const openLibrary = useCallback(() => {
+    libraryOpener.current = document.activeElement as HTMLElement | null // where focus goes back to when the dialog closes
+    setLibraryOpen(true)
+  }, [])
   const { phase } = batch
   const fileInput = useRef<HTMLInputElement>(null)
   const [recipeOpen, setRecipeOpen] = useState(false)
@@ -53,7 +62,7 @@ export default function App() {
       <TopBar phase={phase} batchName={batchName} guest={config?.role === 'guest' ? config : undefined} recipeOpen={recipeOpen} onToggleRecipe={() => setRecipeOpen((o) => !o)} />
 
       <div className="flex min-h-0 flex-1">
-        <Sidebar />
+        <Sidebar onOpenPresets={openLibrary} />
 
         <main
           className="relative flex min-w-0 flex-1 flex-col overflow-y-auto"
@@ -84,13 +93,14 @@ export default function App() {
           )}
         </main>
 
-        <Inspector batch={batch} open={recipeOpen} onClose={() => setRecipeOpen(false)} />
+        <Inspector batch={batch} presets={presets} open={recipeOpen} onClose={() => setRecipeOpen(false)} onManagePresets={openLibrary} />
       </div>
 
       <input
         ref={fileInput} type="file" multiple hidden accept={ACCEPTED_MIME.join(',')}
         onChange={(e) => { batch.addFiles(Array.from(e.target.files ?? [])); e.target.value = '' }}
       />
+      <PresetLibrary open={libraryOpen} onOpenChange={setLibraryOpen} returnFocusTo={libraryOpener} presets={presets} activeId={batch.settings.presetId} onApply={batch.applyPreset} />
       <Toaster toasts={batch.toasts} announcement={batch.announcement} />
       {showDemo && <DemoBar phase={phase} onPick={batch.showDemo} />}
     </div>
